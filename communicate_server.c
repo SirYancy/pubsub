@@ -14,22 +14,19 @@
 
 typedef struct SubNode
 {
-    char *ip[15];
+    char *ip;
     int port;
     char *subscriptions[100];
     struct SubNode *next;
 } SubNode;
 
-typedef struct SubList
-{
-    int size;
-    struct SubNode *front, *rear;
-    unsigned capacity;
-} SubList;
+static SubNode * subList;
+static int numSubs = 0;
 
-static SubList *subscriberList;
 
 void setup_list(int cap);
+void list_subscribers();
+void print_sub(SubNode *n);
 bool_t add_subscriber(char *ip, int port);
 bool_t remove_subscriber(char *ip, int port);
 
@@ -58,14 +55,12 @@ join_1_svc(char *IP, int Port,  struct svc_req *rqstp)
 {
 	static bool_t  result;
 
-    if (subscriberList == NULL)
-    {
-        setup_list(MAXSUBSCRIBERS);
-    }
-
     result = add_subscriber(IP, Port);
 
     printf("Added client. Result: %d, IP: %s, Port: %d\n", result, IP, Port);
+
+    list_subscribers();
+
 
 	return &result; 
 }
@@ -75,11 +70,7 @@ leave_1_svc(char *IP, int Port,  struct svc_req *rqstp)
 {
 	static bool_t  result;
     
-    printf("Leaving...\n");
-
     result = remove_subscriber(IP, Port);
-
-    printf("Left...\n");
 
     if(result)
         printf("Removed client. Result: %d, IP: %s, Port: %d\n", result, IP, Port);
@@ -149,34 +140,31 @@ ping_1_svc(struct svc_req *rqstp)
 	return &result;
 }
 
-void setup_list(int cap)
-{
-    SubList *l = (SubList*)malloc(sizeof(SubList));
-    l->capacity = cap;
-    l->size = 0;
-
-    subscriberList = l;
-}
-
 bool_t add_subscriber(char *ip, int port)
 {
+    if(numSubs >= MAXSUBSCRIBERS){
+        return 0;
+    }
+
     SubNode *n = (SubNode*)malloc(sizeof(SubNode));
-    strcpy(*(n->ip), ip);
+    
+    n->ip = malloc(strlen(ip) * sizeof(char));
+    strcpy(n->ip, ip);
     n->port = port;
+    n->next = NULL;
 
-    if(subscriberList->size > 0)
-    {
-        subscriberList->rear->next = n;
-        subscriberList->rear = n;
+    if(subList == NULL){
+        subList = n;
+        numSubs++;
+        return 1;
     }
-    else 
-    {
-        subscriberList->front = n;
-        subscriberList->rear = n;
+    SubNode *current = subList;
+    while(current->next != NULL){
+        current = current->next;
     }
-
-    subscriberList->size = subscriberList->size + 1;
-
+    
+    current->next = n;
+    numSubs++;
     return 1;
 
     //TODO ensure there are no duplicates?
@@ -184,33 +172,50 @@ bool_t add_subscriber(char *ip, int port)
 
 bool_t remove_subscriber(char *ip, int port)
 {
-    printf("remove_subscriber1\n");
-    SubNode *f = subscriberList->front;
-    SubNode *n = f->next;
-    printf("remove_subscriber2\n");
+    SubNode *current = subList;
 
-    if (!strcmp(*(f->ip), ip) && f->port == port)
+    if (!strcmp(current->ip, ip) && current->port == port)
     {
-        printf("remove_subscriber3\n");
-        subscriberList->front = n;
-        subscriberList->size = subscriberList->size - 1;
-        printf("Changed front and resized\n");
-        free(f);
-        printf("remove_subscriber4\n");
+        subList = current->next;
+        free(current->ip);
+        free(current);
+        numSubs--;
         return 1;
     }
-    while(n)
+
+    SubNode *tmp;
+    int i;
+
+    for(i = 0; i < numSubs-1; i++)
     {
-        if (!strcmp(*(n->ip), ip) && n->port == port)
+        tmp = current;
+        current = current->next;
+        if (!strcmp(current->ip, ip) && current->port == port)
         {
-            f->next = n->next;
-            subscriberList->size = subscriberList->size - 1;
-            free(n);
+            tmp->next = current->next;
+            free(current->ip);
+            free(current);
+            numSubs--;
             return 1;
         }
     }
 
     return 0;
 
+}
+
+void print_sub(SubNode *n)
+{
+    printf("IP: %s, Port: %d\n", n->ip, n->port);
+}
+
+void list_subscribers()
+{
+    SubNode *n = subList;
+    while(n != NULL)
+    {
+        print_sub(n);
+        n = n->next;
+    }
 }
 

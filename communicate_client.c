@@ -35,7 +35,7 @@ main (int argc, char *argv[])
 
     printf("Join Result: %d\n", r);
 
-    r = leave(clnt, "192.168.1.2", 8888);
+    r = leave(clnt, "255.255.255.255", 8888);
 
     printf("Leave Result: %d\n", r);
 
