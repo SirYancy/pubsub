@@ -12,43 +12,23 @@
 #define MAXSUBSCRIBERS 5
 #define MAXSTRING 120
 
-typedef struct SubNode
+typedef struct ClientNode
 {
     char *ip;
     int port;
     char *subscriptions[100];
-    struct SubNode *next;
-} SubNode;
+    struct ClientNode *next;
+} ClientNode;
 
-static SubNode * subList;
+static ClientNode *clientList;
 static int numSubs = 0;
 
 
 void setup_list(int cap);
 void list_subscribers();
-void print_sub(SubNode *n);
+void print_sub(ClientNode *n);
 bool_t add_subscriber(char *ip, int port);
 bool_t remove_subscriber(char *ip, int port);
-
-bool_t *
-joinserver_1_svc(char *IP, int ProgID, int ProgVers,  struct svc_req *rqstp)
-{
-	static bool_t  result;
-
-    // TODO: Later
-
-	return &result;
-}
-
-bool_t *
-leaveserver_1_svc(char *IP, int ProgID, int ProgVers,  struct svc_req *rqstp)
-{
-	static bool_t  result;
-
-    // TODO later
-
-	return &result;
-}
 
 bool_t *
 join_1_svc(char *IP, int Port,  struct svc_req *rqstp)
@@ -59,8 +39,8 @@ join_1_svc(char *IP, int Port,  struct svc_req *rqstp)
 
     printf("Added client. Result: %d, IP: %s, Port: %d\n", result, IP, Port);
 
+    //TODO DELETE THIS DEBUGGING
     list_subscribers();
-
 
 	return &result; 
 }
@@ -76,6 +56,8 @@ leave_1_svc(char *IP, int Port,  struct svc_req *rqstp)
         printf("Removed client. Result: %d, IP: %s, Port: %d\n", result, IP, Port);
     else
         printf("Failed to remove client. Result: %d, IP: %s, Port: %d\n", result, IP, Port);
+
+    list_subscribers();
 
 	return &result;
 }
@@ -117,18 +99,6 @@ publish_1_svc(char *Article, char *IP, int Port,  struct svc_req *rqstp)
 }
 
 bool_t *
-publishserver_1_svc(char *Article, char *IP, int Port,  struct svc_req *rqstp)
-{
-	static bool_t  result;
-
-	/*
-	 * insert server code here
-	 */
-
-	return &result;
-}
-
-bool_t *
 ping_1_svc(struct svc_req *rqstp)
 {
 	static bool_t  result;
@@ -140,25 +110,58 @@ ping_1_svc(struct svc_req *rqstp)
 	return &result;
 }
 
+/**
+bool_t *
+joinserver_1_svc(char *IP, int ProgID, int ProgVers,  struct svc_req *rqstp)
+{
+	static bool_t  result;
+
+    // TODO: Later
+
+	return &result;
+}
+
+bool_t *
+leaveserver_1_svc(char *IP, int ProgID, int ProgVers,  struct svc_req *rqstp)
+{
+	static bool_t  result;
+
+    // TODO later
+
+	return &result;
+}
+
+bool_t *
+publishserver_1_svc(char *Article, char *IP, int Port,  struct svc_req *rqstp)
+{
+	static bool_t  result;
+
+    // TODO
+
+	return &result;
+}
+*/
+
+
 bool_t add_subscriber(char *ip, int port)
 {
     if(numSubs >= MAXSUBSCRIBERS){
         return 0;
     }
 
-    SubNode *n = (SubNode*)malloc(sizeof(SubNode));
+     ClientNode*n = ( ClientNode*)malloc(sizeof( ClientNode));
     
     n->ip = malloc(strlen(ip) * sizeof(char));
     strcpy(n->ip, ip);
     n->port = port;
     n->next = NULL;
 
-    if(subList == NULL){
-        subList = n;
+    if(clientList == NULL){
+        clientList = n;
         numSubs++;
         return 1;
     }
-    SubNode *current = subList;
+     ClientNode*current = clientList ;
     while(current->next != NULL){
         current = current->next;
     }
@@ -172,18 +175,18 @@ bool_t add_subscriber(char *ip, int port)
 
 bool_t remove_subscriber(char *ip, int port)
 {
-    SubNode *current = subList;
+    ClientNode *current = clientList ;
 
     if (!strcmp(current->ip, ip) && current->port == port)
     {
-        subList = current->next;
+        clientList = current->next;
         free(current->ip);
         free(current);
         numSubs--;
         return 1;
     }
 
-    SubNode *tmp;
+    ClientNode *tmp;
     int i;
 
     for(i = 0; i < numSubs-1; i++)
@@ -204,14 +207,14 @@ bool_t remove_subscriber(char *ip, int port)
 
 }
 
-void print_sub(SubNode *n)
+void print_sub(ClientNode *n)
 {
     printf("IP: %s, Port: %d\n", n->ip, n->port);
 }
 
 void list_subscribers()
 {
-    SubNode *n = subList;
+    ClientNode *n = clientList ;
     while(n != NULL)
     {
         print_sub(n);

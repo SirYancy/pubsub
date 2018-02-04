@@ -73,7 +73,7 @@ bool_t join(CLIENT *clnt, char *ip, int port)
 	result = join_1(ip, port, clnt);
 
 	if (result == (bool_t *) NULL) {
-		clnt_perror (clnt, "call failed");
+		clnt_perror (clnt, "Join call failed");
 	}
 
     return *result;
@@ -86,7 +86,7 @@ bool_t leave(CLIENT *clnt, char *ip, int port)
 	result = leave_1(ip, port, clnt);
 
 	if (result == (bool_t *) NULL) {
-		clnt_perror (clnt, "call failed");
+		clnt_perror (clnt, "Leave call failed");
 	}
 
     return *result;
