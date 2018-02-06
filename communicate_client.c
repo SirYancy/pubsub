@@ -13,10 +13,20 @@
 #include <sys/socket.h>
 #include "communicate.h"
 
+#define BUFLEN 512
+#define PORT 8888
 
+void die(char *s)
+{
+    perror(s);
+    exit(1);
+}
+
+char *IP;
+int Port;
 
 CLIENT *setup_rpc(char *host);
-int udp_setup();
+int udp_setup(char *host);
 
 bool_t join(CLIENT *clnt, char *ip, int port);
 bool_t leave(CLIENT *clnt, char *ip, int port);
@@ -104,9 +114,52 @@ void *rpc_thread_func(void *rpc_args)
     return NULL;
 }
 
-int udp_setup()
+int udp_setup(char *host)
 {
-    
+    struct sockaddr_in si_me, si_other;
+    int s, i, slen=sizeof(si_other);
+    char buf[BUFLEN];
+    char message[BUFLEN];
+
+    if((s=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1)
+    {
+        die("socket");
+    }
+
+    memset((char*) &si_other, 0, sizeof(si_other));
+    memset((char*) &si_me, 0, sizeof(si_me));
+
+    si_other.sin_family = AF_INET;
+    si_other.sin_port = htons(PORT);
+
+    si_me.sin_family = AF_INET;
+    si_me.sin_addr.s_addr = htonl(INADDR_ANY);
+    si_me.sin_port = htons(0);
+
+    if(inet_aton(host, &si_other.sin_addr) == 0) {
+        die("inet_aton");
+    }
+
+    if(bind(s, (struct sockaddr *) &si_me, sizeof(si_me)) < 0) {
+        die("bind()");
+    }
+
+    char *handshake = "handshake";
+
+    if(sendto(s, handshake, strlen(handshake), 0, (struct sockaddr *) &si_other, slen) == -1)
+    {
+        die("sendto()");
+    }
+
+    if(recvfrom(s, buf, BUFLEN, 0, (struct sockaddr *) &si_other, &slen) == -1)
+    {
+        die("recvfrom()");
+    }
+
+    IP = strtok (buf, ";
+
+    return s;
+}
 
 CLIENT *setup_rpc(char *host)
 {
