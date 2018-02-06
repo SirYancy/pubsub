@@ -9,9 +9,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
 #include "communicate.h"
 
+
+
 CLIENT *setup_rpc(char *host);
+int udp_setup();
 
 bool_t join(CLIENT *clnt, char *ip, int port);
 bool_t leave(CLIENT *clnt, char *ip, int port);
@@ -99,7 +104,9 @@ void *rpc_thread_func(void *rpc_args)
     return NULL;
 }
 
-
+int udp_setup()
+{
+    
 
 CLIENT *setup_rpc(char *host)
 {

@@ -1,0 +1,63 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.9~svn20110310	//
+ClientNode	communicate_server.c	/^typedef struct ClientNode$/;"	s	file:
+ClientNode	communicate_server.c	/^} ClientNode;$/;"	t	typeref:struct:ClientNode	file:
+MAXSTRING	communicate_server.c	13;"	d	file:
+MAXSUBSCRIBERS	communicate_server.c	12;"	d	file:
+SIG_PF	communicate_svc.c	16;"	d	file:
+TIMEOUT	communicate_clnt.c	/^static struct timeval TIMEOUT = { 25, 0 };$/;"	v	typeref:struct:timeval	file:
+_join_1	communicate_svc.c	/^_join_1 (join_1_argument *argp, struct svc_req *rqstp)$/;"	f	file:
+_joinserver_1	communicate_svc.c	/^_joinserver_1 (joinserver_1_argument *argp, struct svc_req *rqstp)$/;"	f	file:
+_leave_1	communicate_svc.c	/^_leave_1 (leave_1_argument *argp, struct svc_req *rqstp)$/;"	f	file:
+_leaveserver_1	communicate_svc.c	/^_leaveserver_1 (leaveserver_1_argument *argp, struct svc_req *rqstp)$/;"	f	file:
+_ping_1	communicate_svc.c	/^_ping_1 (void  *argp, struct svc_req *rqstp)$/;"	f	file:
+_publish_1	communicate_svc.c	/^_publish_1 (publish_1_argument *argp, struct svc_req *rqstp)$/;"	f	file:
+_publishserver_1	communicate_svc.c	/^_publishserver_1 (publishserver_1_argument *argp, struct svc_req *rqstp)$/;"	f	file:
+_subscribe_1	communicate_svc.c	/^_subscribe_1 (subscribe_1_argument *argp, struct svc_req *rqstp)$/;"	f	file:
+_unsubscribe_1	communicate_svc.c	/^_unsubscribe_1 (unsubscribe_1_argument *argp, struct svc_req *rqstp)$/;"	f	file:
+add_subscriber	communicate_server.c	/^bool_t add_subscriber(char *ip, int port)$/;"	f
+clientList	communicate_server.c	/^static ClientNode *clientList;$/;"	v	file:
+communicate_prog_1	communicate_svc.c	/^communicate_prog_1(struct svc_req *rqstp, register SVCXPRT *transp)$/;"	f	file:
+finished	communicate_client.c	/^int finished = 0;$/;"	v
+ip	communicate_server.c	/^    char *ip;$/;"	m	struct:ClientNode	file:
+join	communicate_client.c	/^bool_t join(CLIENT *clnt, char *ip, int port)$/;"	f
+join_1	communicate_clnt.c	/^join_1(char *IP, int Port,  CLIENT *clnt)$/;"	f
+join_1_svc	communicate_server.c	/^join_1_svc(char *IP, int Port,  struct svc_req *rqstp)$/;"	f
+joinserver_1	communicate_clnt.c	/^joinserver_1(char *IP, int ProgID, int ProgVers,  CLIENT *clnt)$/;"	f
+leave	communicate_client.c	/^bool_t leave(CLIENT *clnt, char *ip, int port)$/;"	f
+leave_1	communicate_clnt.c	/^leave_1(char *IP, int Port,  CLIENT *clnt)$/;"	f
+leave_1_svc	communicate_server.c	/^leave_1_svc(char *IP, int Port,  struct svc_req *rqstp)$/;"	f
+leaveserver_1	communicate_clnt.c	/^leaveserver_1(char *IP, int ProgID, int ProgVers,  CLIENT *clnt)$/;"	f
+list_subscribers	communicate_server.c	/^void list_subscribers()$/;"	f
+main	communicate_client.c	/^main (int argc, char *argv[])$/;"	f
+main	communicate_svc.c	/^main (int argc, char **argv)$/;"	f
+next	communicate_server.c	/^    struct ClientNode *next;$/;"	m	struct:ClientNode	typeref:struct:ClientNode::ClientNode	file:
+numSubs	communicate_server.c	/^static int numSubs = 0;$/;"	v	file:
+ping_1	communicate_clnt.c	/^ping_1(CLIENT *clnt)$/;"	f
+ping_1_svc	communicate_server.c	/^ping_1_svc(struct svc_req *rqstp)$/;"	f
+port	communicate_server.c	/^    int port;$/;"	m	struct:ClientNode	file:
+print_sub	communicate_server.c	/^void print_sub(ClientNode *n)$/;"	f
+publish_1	communicate_clnt.c	/^publish_1(char *Article, char *IP, int Port,  CLIENT *clnt)$/;"	f
+publish_1_svc	communicate_server.c	/^publish_1_svc(char *Article, char *IP, int Port,  struct svc_req *rqstp)$/;"	f
+publishserver_1	communicate_clnt.c	/^publishserver_1(char *Article, char *IP, int Port,  CLIENT *clnt)$/;"	f
+remove_subscriber	communicate_server.c	/^bool_t remove_subscriber(char *ip, int port)$/;"	f
+rpc_thread_func	communicate_client.c	/^void *rpc_thread_func(void *rpc_args)$/;"	f
+setup_rpc	communicate_client.c	/^CLIENT *setup_rpc(char *host)$/;"	f
+subscribe_1	communicate_clnt.c	/^subscribe_1(char *IP, int Port, char *Article,  CLIENT *clnt)$/;"	f
+subscribe_1_svc	communicate_server.c	/^subscribe_1_svc(char *IP, int Port, char *Article,  struct svc_req *rqstp)$/;"	f
+subscriptions	communicate_server.c	/^    char *subscriptions[100];$/;"	m	struct:ClientNode	file:
+udp_thread_func	communicate_client.c	/^void *udp_thread_func(void *udp_args)$/;"	f
+unsubscribe_1	communicate_clnt.c	/^unsubscribe_1(char *IP, int Port, char *Article,  CLIENT *clnt)$/;"	f
+unsubscribe_1_svc	communicate_server.c	/^unsubscribe_1_svc(char *IP, int Port, char *Article,  struct svc_req *rqstp)$/;"	f
+xdr_join_1_argument	communicate_xdr.c	/^xdr_join_1_argument (XDR *xdrs, join_1_argument *objp)$/;"	f
+xdr_joinserver_1_argument	communicate_xdr.c	/^xdr_joinserver_1_argument (XDR *xdrs, joinserver_1_argument *objp)$/;"	f
+xdr_leave_1_argument	communicate_xdr.c	/^xdr_leave_1_argument (XDR *xdrs, leave_1_argument *objp)$/;"	f
+xdr_leaveserver_1_argument	communicate_xdr.c	/^xdr_leaveserver_1_argument (XDR *xdrs, leaveserver_1_argument *objp)$/;"	f
+xdr_publish_1_argument	communicate_xdr.c	/^xdr_publish_1_argument (XDR *xdrs, publish_1_argument *objp)$/;"	f
+xdr_publishserver_1_argument	communicate_xdr.c	/^xdr_publishserver_1_argument (XDR *xdrs, publishserver_1_argument *objp)$/;"	f
+xdr_subscribe_1_argument	communicate_xdr.c	/^xdr_subscribe_1_argument (XDR *xdrs, subscribe_1_argument *objp)$/;"	f
+xdr_unsubscribe_1_argument	communicate_xdr.c	/^xdr_unsubscribe_1_argument (XDR *xdrs, unsubscribe_1_argument *objp)$/;"	f

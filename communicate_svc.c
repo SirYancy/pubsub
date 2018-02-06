@@ -9,12 +9,22 @@
 #include <rpc/pmap_clnt.h>
 #include <string.h>
 #include <memory.h>
+#include <arpa/inet.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+
+#define PORT 8888
+#define BUFLEN 512
 
 #ifndef SIG_PF
 #define SIG_PF void(*)(int)
 #endif
+
+void die(char *s)
+{
+    perror(s);
+    exit(1);
+}
 
 static bool_t *
 _joinserver_1 (joinserver_1_argument *argp, struct svc_req *rqstp)
@@ -166,9 +176,56 @@ communicate_prog_1(struct svc_req *rqstp, register SVCXPRT *transp)
 	return;
 }
 
+void *udp_thread_func(void *udp_args)
+{
+    struct sockaddr_in si_me, si_other;
+
+    int s, i, slen = sizeof(si_other), recv_len;
+    char buf[BUFLEN];
+
+    if ((s=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1)
+    {
+        die("socket");
+    }
+
+    memset((char *) &si_me, 0, sizeof(si_me));
+
+    si_me.sin_family = AF_INET;
+    si_me.sin_port = htons(PORT);
+    si_me.sin_addr.s_addr = htonl(INADDR_ANY);
+
+    if( bind(s, (struct sockaddr*) &si_me, sizeof(si_me)) == -1)
+    {
+        die("bind");
+    }
+        printf("UDP Started...\n");
+
+    while(1)
+    {
+        if((recv_len = recvfrom(s, buf, BUFLEN, 0, (struct sockaddr *) &si_other, &slen)) == -1)
+        {
+            die("recvfrom()");
+        }
+
+        printf("Received from %s:%d\n", inetntoa(si_other.sin_addr), ntohs(si_other.sin_port));
+        printf("Data: %s", buf);
+
+        if(sendto(s, buf, recv_len, 0, (struct suckaddr*) &si_other, slen) == -1)
+        {
+            die("sendto()");
+        }
+    }
+
+    close(s);
+    return 0;
+}
+
+    
+
 int
 main (int argc, char **argv)
 {
+
 	register SVCXPRT *transp;
 
 	pmap_unset (COMMUNICATE_PROG, COMMUNICATE_VERSION);
@@ -192,6 +249,13 @@ main (int argc, char **argv)
 		fprintf (stderr, "%s", "unable to register (COMMUNICATE_PROG, COMMUNICATE_VERSION, tcp).");
 		exit(1);
 	}
+
+    pthread udp_thread;
+
+    if(pthread_create(&udp_thread, NULL, udp_thread_func, 0)){
+        die("Error creating UDP thread\n");
+        return 1;
+    }
 
 	svc_run ();
 	fprintf (stderr, "%s", "svc_run returned");
