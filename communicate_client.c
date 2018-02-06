@@ -7,16 +7,28 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
 #include "communicate.h"
 
+#define SERVER "127.0.0.1"
+#define PORT 8888
+
 CLIENT *setup_rpc(char *host);
+int setup_udp();
+
+struct sockaddr_in si_server, si_me;
 
 bool_t join(CLIENT *clnt, char *ip, int port);
 bool_t leave(CLIENT *clnt, char *ip, int port);
 
+void *udp_thread_func(void *udp_args);
+void *rcp_thread_func(void *rcp_args);
+
 int
 main (int argc, char *argv[])
 {
+    int sock;
     CLIENT *clnt;
 	char *host;
 
@@ -25,27 +37,15 @@ main (int argc, char *argv[])
 		exit (1);
 	}
 	host = argv[1];
-    clnt = setup_rpc(host);
+    // clnt = setup_rpc(host);
 
-    int r = join(clnt, "192.168.1.1", 8888);
+    //sock = setup_udp();
 
-    printf("Join Result: %d\n", r);
 
-    r = join(clnt, "192.168.1.2", 8888);
-
-    printf("Join Result: %d\n", r);
-
-    r = leave(clnt, "255.255.255.255", 8888);
-
-    printf("Leave Result: %d\n", r);
-
-    r = leave(clnt, "192.168.1.1", 8888);
-
-    printf("Leave Result: %d\n", r);
-
+//    int r = join(clnt, "192.168.1.1", 8888);
 
 #ifndef	DEBUG
-	clnt_destroy (clnt);
+//	clnt_destroy (clnt);
 #endif	 /* DEBUG */
 
     exit (0);
@@ -65,6 +65,67 @@ CLIENT *setup_rpc(char *host)
 
     return clnt;
 }
+
+int setup_udp()
+{
+    printf("setup udp\n");
+    fflush(stdout);
+    int sock;
+
+    if((sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1) {
+        clnt_pcreateerror("socket");
+        exit(1);
+    }
+
+    printf("memsets\n");
+    fflush(stdout);
+
+    memset((char *) &si_server, 0, sizeof(si_server));
+    memset((char *) &si_me, 0, sizeof(si_server));
+
+    printf("setup sockets\n");
+    fflush(stdout);
+
+    si_server.sin_family = AF_INET;
+    si_server.sin_port = htons(PORT);
+
+    si_me.sin_family = AF_INET;
+    si_me.sin_addr.s_addr = htonl(INADDR_ANY);
+    si_me.sin_port = htons(0);
+
+    printf("creating server\n");
+    fflush(stdout);
+
+    if (inet_aton(SERVER, &si_server.sin_addr) == 0) {
+        clnt_pcreateerror("inet_aton");
+        exit(1);
+    }
+
+    printf("binding\n");
+    fflush(stdout);
+
+    if (bind(sock, (struct sockaddr *) &si_me, sizeof(si_me)) < 0) {
+        clnt_pcreateerror("bind()");
+        exit(1);
+    }
+
+    printf("printing\n");
+    fflush(stdout);
+
+    socklen_t *slen;
+
+    if (getsockname(sock, (struct sockaddr *)&si_me, slen) < 0) {
+        clnt_pcreateerror("getsockname");
+        exit(1);
+    }
+
+    printf("Bound to IP: %s, PORT: %d", inet_ntoa(si_me.sin_addr), ntohs(si_me.sin_port));
+}
+
+void *udp_thread_func(void *udp_args)
+{}
+void *rcp_thread_func(void *rcp_args)
+{}
 
 bool_t join(CLIENT *clnt, char *ip, int port)
 {
