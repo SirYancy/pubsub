@@ -156,7 +156,12 @@ int udp_setup(char *host)
         die("recvfrom()");
     }
 
-    IP = strtok (buf, ";
+    // Expecting buffer with the format "xxx.xxx.xxx.xxx:PORT"
+    char *resp;
+    resp = strtok(buf, ":");
+
+    IP = strtok(NULL, ":");
+    Port = ntohs(si_me.sin_port);
 
     return s;
 }

@@ -4,27 +4,23 @@
  */
 
 #include "communicate.h"
+#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <rpc/pmap_clnt.h>
 #include <string.h>
 #include <memory.h>
+#include <pthread.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 
 #define PORT 8888
-#define BUFLEN 512
+#define BUFLEN 120
 
 #ifndef SIG_PF
 #define SIG_PF void(*)(int)
 #endif
-
-void die(char *s)
-{
-    perror(s);
-    exit(1);
-}
 
 static bool_t *
 _joinserver_1 (joinserver_1_argument *argp, struct svc_req *rqstp)
@@ -176,6 +172,12 @@ communicate_prog_1(struct svc_req *rqstp, register SVCXPRT *transp)
 	return;
 }
 
+void die(char *s)
+{
+    perror(s);
+    exit(1);
+}
+
 void *udp_thread_func(void *udp_args)
 {
     struct sockaddr_in si_me, si_other;
@@ -207,20 +209,31 @@ void *udp_thread_func(void *udp_args)
             die("recvfrom()");
         }
 
-        printf("Received from %s:%d\n", inetntoa(si_other.sin_addr), ntohs(si_other.sin_port));
+        if(!strcmp(buf, "handshake"))
+        {
+            char *ip = inet_ntoa(si_other.sin_addr);
+            int port = ntohs(si_other.sin_port);
+
+            memset(buf, 0, BUFLEN);
+
+            snprintf(buf, BUFLEN, "%s:%d%c", ip, port, '\0');
+
+            if(sendto(s, buf, strlen(buf), 0, (struct sockaddr*) &si_other, slen) == -1)
+            {
+                die("sendto()");
+            }
+
+        }
+
+        printf("Received from %s:%d\n", inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port));
         printf("Data: %s", buf);
 
-        if(sendto(s, buf, recv_len, 0, (struct suckaddr*) &si_other, slen) == -1)
-        {
-            die("sendto()");
-        }
     }
 
     close(s);
     return 0;
 }
 
-    
 
 int
 main (int argc, char **argv)
@@ -250,14 +263,14 @@ main (int argc, char **argv)
 		exit(1);
 	}
 
-    pthread udp_thread;
+    pthread_t udp_thread;
 
     if(pthread_create(&udp_thread, NULL, udp_thread_func, 0)){
         die("Error creating UDP thread\n");
         return 1;
     }
 
-	svc_run ();
+	//svc_run ();
 	fprintf (stderr, "%s", "svc_run returned");
 	exit (1);
 	/* NOTREACHED */
