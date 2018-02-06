@@ -4,15 +4,22 @@
  * as a guideline for developing your own functions.
  */
 
+#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <pthread.h>
 #include "communicate.h"
 
 CLIENT *setup_rpc(char *host);
 
 bool_t join(CLIENT *clnt, char *ip, int port);
 bool_t leave(CLIENT *clnt, char *ip, int port);
+
+void *udp_thread_func(void *udp_args);
+void *rpc_thread_func(void *rpc_args);
+
+int finished = 0;
 
 int
 main (int argc, char *argv[])
@@ -25,31 +32,74 @@ main (int argc, char *argv[])
 		exit (1);
 	}
 	host = argv[1];
-    clnt = setup_rpc(host);
+    // clnt = setup_rpc(host);
 
-    int r = join(clnt, "192.168.1.1", 8888);
+    pthread_t udp_thread,
+              rpc_thread;
 
-    printf("Join Result: %d\n", r);
+    if(pthread_create(&udp_thread, NULL, udp_thread_func, 0)) {
+        fprintf(stderr, "Error creating udp thread\n");
+        return 1;
+    }
 
-    r = join(clnt, "192.168.1.2", 8888);
+    if(pthread_create(&rpc_thread, NULL, rpc_thread_func, 0)) {
+        fprintf(stderr, "Error creating rcp thread\n");
+        return 1;
+    }
 
-    printf("Join Result: %d\n", r);
+    while(!finished){}
 
-    r = leave(clnt, "255.255.255.255", 8888);
-
-    printf("Leave Result: %d\n", r);
-
-    r = leave(clnt, "192.168.1.1", 8888);
-
-    printf("Leave Result: %d\n", r);
-
+    pthread_join(udp_thread, NULL);
+    pthread_join(rpc_thread, NULL);
 
 #ifndef	DEBUG
-	clnt_destroy (clnt);
+//	clnt_destroy (clnt);
 #endif	 /* DEBUG */
 
     exit (0);
 }
+
+void *udp_thread_func(void *udp_args)
+{
+    while(!finished){
+        printf("UDP Thread active\n");
+        sleep(10);
+    }
+    return NULL;
+}
+
+void *rpc_thread_func(void *rpc_args)
+{
+    int choice;
+    while(1){
+        printf("Welcome\n Menu:\n1 - subscribe\n2 - unsubscribe\n3 - quit\n");
+        scanf("%d", &choice);
+        switch(choice) {
+            case 1:
+                printf("You are subscribing\n");
+                //TODO
+                break;
+            case 2:
+                printf("You are unsubscribing\n");
+                //TODO
+                break;
+            case 3:
+                printf("You are quitting\n");
+                //TODO
+                break;
+            default:
+                printf("That is not a command I recognize\n");
+        }
+        if(choice == 3)
+            break;
+    }
+
+    finished = 1;
+
+    return NULL;
+}
+
+
 
 CLIENT *setup_rpc(char *host)
 {
