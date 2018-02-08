@@ -5,11 +5,18 @@
  */
 
 #include <stdio.h>
+#include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
+#include <pthread.h>
 #include "communicate.h"
 
 CLIENT *setup_rpc(char *host);
+
+void *rpc_thread_func(void *rpc_args);
+void *udp_thread_func(void *udp_args);
+
+int live = 1;
 
 bool_t join(CLIENT *clnt, char *ip, int port);
 bool_t leave(CLIENT *clnt, char *ip, int port);
@@ -22,6 +29,8 @@ main (int argc, char *argv[])
     CLIENT *clnt;
 	char *host;
 
+    pthread_t rpc_thread, udp_thread;
+
 	if (argc < 2) {
 		printf ("usage: %s server_host\n", argv[0]);
 		exit (1);
@@ -29,7 +38,19 @@ main (int argc, char *argv[])
 	host = argv[1];
     
     clnt = setup_rpc(host);
+    
+    pthread_create(&udp_thread, NULL, udp_thread_func, NULL);
+    pthread_create(&rpc_thread, NULL, rpc_thread_func, NULL);
 
+    while(live){}
+
+    pthread_join(udp_thread, NULL);
+    pthread_join(rpc_thread, NULL);
+
+    printf("All threads joined\n Program terminating\n");
+
+
+    /**
     int r = join(clnt, "192.168.1.1", 8888);
 
     printf("Join Result: %d\n", r);
@@ -69,6 +90,7 @@ main (int argc, char *argv[])
     r = leave(clnt, "192.168.1.2", 8888);
 
     printf("Leave Result: %d\n", r);
+    */
     
 #ifndef	DEBUG
 	clnt_destroy (clnt);
@@ -90,6 +112,47 @@ CLIENT *setup_rpc(char *host)
 #endif	/* DEBUG */
 
     return clnt;
+}
+
+void *rpc_thread_func(void *rpc_args)
+{
+    int menu_choice;
+    while(live)
+    {
+        printf("Welcome!\n%s\n%s\n%s\n%s\n%s\n%s",
+                "What do you want to do?",
+                "1 - subscribe",
+                "2 - unsubscribe",
+                "3 - publish",
+                "4 - quit",
+                "> ");
+        scanf("%d", &menu_choice);
+        switch(menu_choice) {
+            case 1:
+                printf("Subscribing now\n");
+                break;
+            case 2:
+                printf("Unsubscribing now\n");
+                break;
+            case 3:
+                printf("Publishing now\n");
+                break;
+            case 4:
+                live = 0;
+                break;
+            default:
+                printf("I don't recognize that input\n");
+                break;
+        }
+    }
+
+}
+void *udp_thread_func(void *udp_args)
+{
+    while(live){
+        printf("UDP Live\n");
+        sleep(5);
+    }
 }
 
 bool_t join(CLIENT *clnt, char *ip, int port)
