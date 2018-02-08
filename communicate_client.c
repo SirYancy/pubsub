@@ -13,6 +13,8 @@ CLIENT *setup_rpc(char *host);
 
 bool_t join(CLIENT *clnt, char *ip, int port);
 bool_t leave(CLIENT *clnt, char *ip, int port);
+bool_t subscribe(CLIENT *clnt, char *ip, int port, char *Article);
+bool_t unsubscribe(CLIENT *clnt, char *ip, int port, char *Article);
 
 int
 main (int argc, char *argv[])
@@ -25,6 +27,7 @@ main (int argc, char *argv[])
 		exit (1);
 	}
 	host = argv[1];
+    
     clnt = setup_rpc(host);
 
     int r = join(clnt, "192.168.1.1", 8888);
@@ -35,6 +38,26 @@ main (int argc, char *argv[])
 
     printf("Join Result: %d\n", r);
 
+    int s = subscribe(clnt, "192.168.1.1", 8888, "UMN;;;");
+    
+    printf("Subscribe Result: %d\n", s);
+    
+    s = subscribe (clnt, "192.168.1.2", 8888, "English;Hemingway");
+    
+    printf("Subscribe Result: %d\n", s);
+
+    int u = unsubscribe (clnt, "192.168.1.2", 8888, "Hemingway");
+
+    printf("Unsubscribe Result: %d\n", u);
+    
+    u = unsubscribe (clnt, "192.168.1.1", 8888, "UMN");
+
+    printf("Unsubscribe Result: %d\n", u);
+
+    u = unsubscribe (clnt, "192.168.1.2", 8888, "Hemingway");
+
+    printf("Unsubscribe Result: %d\n", u);
+
     r = leave(clnt, "255.255.255.255", 8888);
 
     printf("Leave Result: %d\n", r);
@@ -43,7 +66,10 @@ main (int argc, char *argv[])
 
     printf("Leave Result: %d\n", r);
 
+    r = leave(clnt, "192.168.1.2", 8888);
 
+    printf("Leave Result: %d\n", r);
+    
 #ifndef	DEBUG
 	clnt_destroy (clnt);
 #endif	 /* DEBUG */
@@ -73,7 +99,7 @@ bool_t join(CLIENT *clnt, char *ip, int port)
 	result = join_1(ip, port, clnt);
 
 	if (result == (bool_t *) NULL) {
-		clnt_perror (clnt, "Join call failed");
+		clnt_perror (clnt, "call failed");
 	}
 
     return *result;
@@ -86,14 +112,40 @@ bool_t leave(CLIENT *clnt, char *ip, int port)
 	result = leave_1(ip, port, clnt);
 
 	if (result == (bool_t *) NULL) {
-		clnt_perror (clnt, "Leave call failed");
+		clnt_perror (clnt, "call failed");
 	}
 
     return *result;
 
 }
 
+bool_t subscribe(CLIENT *clnt, char *ip, int port, char *Article)
+{
+	bool_t *result; 
 
+	result = subscribe_1(ip, port, Article, clnt);
+
+	if (result == (bool_t *) NULL) {
+                clnt_perror (clnt, "call failed");
+        }
+
+	return *result;
+
+}
+
+bool_t unsubscribe(CLIENT *clnt, char *ip, int port, char *Article) 
+{
+
+	bool_t *result; 
+
+	result = unsubscribe_1(ip, port, Article, clnt);
+	if (result == (bool_t *) NULL) 
+	{
+		clnt_perror (clnt, "call failed");
+	} 
+
+	return *result;
+}
 /*
 void
 communicate_prog_1(char *host)
