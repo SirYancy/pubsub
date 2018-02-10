@@ -12,9 +12,9 @@ SOURCES_SVC.c =
 SOURCES_SVC.h = 
 SOURCES.x = communicate.x
 
-TARGETS_SVC.c = communicate_svc.c communicate_server.c communicate_xdr.c 
-TARGETS_CLNT.c = communicate_clnt.c communicate_client.c communicate_xdr.c 
-TARGETS = communicate.h communicate_xdr.c communicate_clnt.c communicate_svc.c communicate_client.c communicate_server.c
+TARGETS_SVC.c = communicate_svc.c communicate_server.c communicate_xdr.c udp.c 
+TARGETS_CLNT.c = communicate_clnt.c communicate_client.c communicate_xdr.c udp.c
+TARGETS = communicate.h communicate_xdr.c communicate_clnt.c communicate_svc.c communicate_client.c communicate_server.c udp.h
 
 OBJECTS_CLNT = $(SOURCES_CLNT.c:%.c=%.o) $(TARGETS_CLNT.c:%.c=%.o)
 OBJECTS_SVC = $(SOURCES_SVC.c:%.c=%.o) $(TARGETS_SVC.c:%.c=%.o)

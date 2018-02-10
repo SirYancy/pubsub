@@ -12,6 +12,8 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
+#include <pthread.h>
+
 #ifndef SIG_PF
 #define SIG_PF void(*)(int)
 #endif
@@ -166,10 +168,39 @@ communicate_prog_1(struct svc_req *rqstp, register SVCXPRT *transp)
 	return;
 }
 
+#include "udp.h"
+
+void *udp_thread_func(void *udp_args) {
+    int clientSocket;
+    struct sockaddr_in myAddr, clientAddr;
+    char buffer[MAX_BUFFER];
+
+    printf("In udp thread ...\n");
+
+    if (!InitServer(5678, &clientSocket, &myAddr)) {
+        // Initialize server failed
+        printf("Server init fail\n");
+    }
+    printf("Server initialized\n");
+
+    memset((char *)&clientAddr, '\0', sizeof(clientAddr));
+
+    RecvFrom(clientSocket, &clientAddr, buffer);
+
+    printf("%s\n", buffer);
+    printf("%d %d\n", ntohs(clientAddr.sin_port), inet_ntoa(clientAddr.sin_addr));
+
+    while (true) {
+        SendTo(clientSocket, &clientAddr, "XXX");
+        sleep(2);
+    }
+}
+
 int
 main (int argc, char **argv)
 {
 	register SVCXPRT *transp;
+    pthread_t udp_thread;
 
 	pmap_unset (COMMUNICATE_PROG, COMMUNICATE_VERSION);
 
@@ -193,8 +224,11 @@ main (int argc, char **argv)
 		exit(1);
 	}
 
-	svc_run ();
-	fprintf (stderr, "%s", "svc_run returned");
-	exit (1);
-	/* NOTREACHED */
+    pthread_create(&udp_thread, NULL, udp_thread_func, NULL);
+
+    svc_run ();
+    pthread_join(udp_thread, NULL);
+    fprintf (stderr, "%s", "svc_run returned");
+    exit (1);
+    /* NOTREACHED */
 }
