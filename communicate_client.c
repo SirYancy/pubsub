@@ -9,12 +9,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
+#include <arpa/inet.h>
 #include "communicate.h"
 
 #include "udp.h"
 
 CLIENT *setup_rpc(char *host);
 
+void *ping_thread_func(void *ping_args);
 void *rpc_thread_func(void *rpc_args);
 void *udp_thread_func(void *udp_args);
 
@@ -24,6 +26,7 @@ bool_t join(CLIENT *clnt, char *ip, int port);
 bool_t leave(CLIENT *clnt, char *ip, int port);
 bool_t subscribe(CLIENT *clnt, char *ip, int port, char *Article);
 bool_t unsubscribe(CLIENT *clnt, char *ip, int port, char *Article);
+bool_t ping(CLIENT *clnt);
 
 int
 main (int argc, char *argv[])
@@ -31,7 +34,7 @@ main (int argc, char *argv[])
     CLIENT *clnt;
 	char *host;
 
-    pthread_t rpc_thread, udp_thread;
+    pthread_t rpc_thread, udp_thread, ping_thread;
 
 	if (argc < 2) {
 		printf ("usage: %s server_host\n", argv[0]);
@@ -41,13 +44,15 @@ main (int argc, char *argv[])
     
     clnt = setup_rpc(host);
     
-    pthread_create(&udp_thread, NULL, udp_thread_func, NULL);
+    //pthread_create(&udp_thread, NULL, udp_thread_func, NULL);
     pthread_create(&rpc_thread, NULL, rpc_thread_func, NULL);
+    pthread_create(&ping_thread, NULL, ping_thread_func, (void *)clnt);
 
     while(live){}
 
-    pthread_join(udp_thread, NULL);
+    //pthread_join(udp_thread, NULL);
     pthread_join(rpc_thread, NULL);
+    pthread_join(ping_thread, NULL);
 
     printf("All threads joined\n Program terminating\n");
 
@@ -150,6 +155,24 @@ void *rpc_thread_func(void *rpc_args)
 
 }
 
+void *ping_thread_func(void *ping_args)
+{
+    CLIENT *clnt = (CLIENT *)ping_args;
+    bool_t *result;
+
+    while(live){
+        result = ping_1(clnt);
+        printf("Sending Ping\n");
+        if (result == (bool_t *) NULL) {
+            clnt_perror(clnt, "Ping failed");
+            live = 0;
+        }
+        printf("Ping Received\n");
+
+        sleep(60);
+    }
+}
+
 void *udp_thread_func(void *udp_args)
 {
     int serverSocket;
@@ -159,7 +182,7 @@ void *udp_thread_func(void *udp_args)
         // Client initialization fail
     }
 
-    printf("Client Initialized\n %d %d\n", inet_ntoa(serverAddr.sin_addr), ntohs(serverAddr.sin_port));
+    printf("Client Initialized\n %s %d\n", inet_ntoa(serverAddr.sin_addr), ntohs(serverAddr.sin_port));
 
     while(live){
         char buffer[MAX_BUFFER];

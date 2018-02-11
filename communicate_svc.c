@@ -224,7 +224,7 @@ main (int argc, char **argv)
 		exit(1);
 	}
 
-    pthread_create(&udp_thread, NULL, udp_thread_func, NULL);
+//    pthread_create(&udp_thread, NULL, udp_thread_func, NULL);
 
     svc_run ();
     pthread_join(udp_thread, NULL);

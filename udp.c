@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include "udp.h"
 
 bool InitServer(int port, int *sockDesc, struct sockaddr_in *sockAddr) {
