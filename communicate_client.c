@@ -15,6 +15,7 @@ bool_t join(CLIENT *clnt, char *ip, int port);
 bool_t leave(CLIENT *clnt, char *ip, int port);
 bool_t subscribe(CLIENT *clnt, char *ip, int port, char *Article);
 bool_t unsubscribe(CLIENT *clnt, char *ip, int port, char *Article);
+bool_t publish(CLIENT *clnt, char *ip, int port, char *Article);
 
 int
 main (int argc, char *argv[])
@@ -38,7 +39,7 @@ main (int argc, char *argv[])
 
     printf("Join Result: %d\n", r);
 
-    int s = subscribe(clnt, "192.168.1.1", 8888, "UMN;;;");
+    int s = subscribe(clnt, "192.168.1.1", 8888, "Science;UMN;;");
     
     printf("Subscribe Result: %d\n", s);
     
@@ -46,7 +47,15 @@ main (int argc, char *argv[])
     
     printf("Subscribe Result: %d\n", s);
 
-    int u = unsubscribe (clnt, "192.168.1.2", 8888, "Hemingway");
+    int p = publish (clnt, "192.168.1.1", 8888, "Food;MasterChef;Ramsay;cake");
+ 
+    printf("Publish Result: %d\n", p);
+
+    p = publish (clnt, "192.168.1.2", 8888, "Sports;NFL;Brady;;");
+
+    printf("Publish Result: %d\n", p);
+
+    int u = unsubscribe (clnt, "192.168.1.2", 8888, "English");
 
     printf("Unsubscribe Result: %d\n", u);
     
@@ -143,6 +152,18 @@ bool_t unsubscribe(CLIENT *clnt, char *ip, int port, char *Article)
 	{
 		clnt_perror (clnt, "call failed");
 	} 
+
+	return *result;
+}
+
+bool_t publish(CLIENT *clnt, char *ip, int port, char *Article)
+{
+	bool_t *result;
+	result = publish_1(Article, ip, port, clnt);
+	if (result == (bool_t *) NULL) 
+	{
+		clnt_perror (clnt, "call failed");
+	}
 
 	return *result;
 }

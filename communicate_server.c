@@ -31,6 +31,7 @@ bool_t add_subscriber(char *ip, int port);
 bool_t remove_subscriber(char *ip, int port);
 bool_t subscribing(char *ip, int port, char *Article);
 bool_t unsubscribing(char *ip, int port, char *Article);
+bool_t publishing(char *ip, int port, char *Article);
 
 bool_t *
 joinserver_1_svc(char *IP, int ProgID, int ProgVers,  struct svc_req *rqstp)
@@ -121,7 +122,15 @@ bool_t *
 publish_1_svc(char *Article, char *IP, int Port,  struct svc_req *rqstp)
 {
 	static bool_t  result;
-
+	result = publishing(IP, Port, Article);
+	if (result) 
+	{
+		printf("New published article: %s\n", Article);
+	}
+	else 
+	{
+		printf("Failed to publish article\n");
+	}
 	/*
 	 * insert server code here
 	 */
@@ -217,6 +226,26 @@ bool_t remove_subscriber(char *ip, int port)
 
 }
 
+bool_t publishing(char *ip, int port, char *Article)
+{
+	int j = 0;
+	char *type;
+	while ((type = strsep(&Article, ";")) != NULL)
+	{ 
+		if (j == 3 && !strcmp(type, "")) //if contents field is empty 
+		{
+			printf("Illegal to publish this article\n");
+			return 0;
+		}
+		j++;
+	}
+	
+	// TODO: Insert logic to broadcast to all clients
+
+	return 1;
+
+}
+
 bool_t subscribing(char *ip, int port, char *Article)
 {
 	int i; 
@@ -231,10 +260,10 @@ bool_t subscribing(char *ip, int port, char *Article)
 		{
 			while ((type = strsep(&Article, ";")) != NULL)
 			{ 
-				if (strcmp(type, "") && (sizeof(type) <= MAXSTRING))
+				if (strcmp(type, ""))
 				{  
-					if (p == 3 && j == 0) { 
-// if only contents exist return 0						printf("Illegal article");
+					if (p == 3 && j == 0) { // if only contents exist return 0
+						printf("Illegal article");
 						return 0;
 					}
 					strcpy(current->subscriptions[j], type);
@@ -259,9 +288,7 @@ bool_t subscribing(char *ip, int port, char *Article)
 bool_t unsubscribing(char *ip, int port, char *Article)
 {
 	int i = 0;
-	int s = 0;  
-	int r = 0;
-	int q = 0;
+	int s = 0;  	
         int p = 0;
 	int u  = 0;
 
@@ -273,70 +300,33 @@ bool_t unsubscribing(char *ip, int port, char *Article)
                 {       
 			char *type;
                         char subs[100][MAXSTRING];
-			while ((type = strsep(&Article, ";")) != NULL)
-                        {       
-                        	strcpy(subs[q], type);
-				q++;
-                        }
-			for (s = 0; s < 100; s++) 
-			{	
-				for (r = 0; r < 100; r++) 
+
+			while ((type = strsep(&Article, ";")) != NULL) 
+			{
+				for (s = 0; s < 100; s++)
 				{
-					if (!strcmp(current->subscriptions[s], subs[r]) && strcmp(subs[r], "")) {
+					if (!strcmp(current->subscriptions[s], type) && strcmp(type, ""))
+					{	
 						u++;
 						strcpy(current->subscriptions[s], "");
-					}
+					} 
 				}
-
 			}
 			
 			if (u == 0)
 			{
 				return 0;
 			}
+			/*for (p = 0; p <100; p++) 
+			{
+				printf("client %s subscribed to %s\n", current->ip, current->subscriptions[p]);
+			} */
                         return 1;
-                }
+		}
                 current = current->next;
         }
         return 0;
 }
-
-/*bool_t unsubscribing(char *ip, int port, char *Article)
-{
-        int i;
-        int j = 0;
-        int p = 0;
-        SubNode *current = subList;
-        char *type;
-
-        for (i = 0; i < numSubs; i++) // go through all the clients to look for right one
-        {
-                if (!strcmp(current->ip, ip) && current->port == port)
-                {
-                        while ((type = strsep(&Article, ";")) != NULL)
-                        {
-                                if (strcmp(type, ""))
-                                {
-                                        if (p == 3 && j == 0) {
-// if only contents exist return 0                                              printf("Illegal article");
-                                                return 0;
-                                        }
-                                        current->subscriptions[j] = type;
-                                        j++;
-                                }
-                                p++;
-                        }
-                        if (j == 0) // if nothing, return 0
-                        {
-                                printf("Illegal article");
-                                return 0;
-                        }
-                        return 1;
-                }
-                current = current->next;
-        }
-        return 0;
-}*/
 
 void print_sub(SubNode *n)
 {
