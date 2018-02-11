@@ -153,25 +153,18 @@ void *rpc_thread_func(void *rpc_args)
 void *udp_thread_func(void *udp_args)
 {
     int serverSocket;
-    struct sockaddr_in serverAddr;
+    struct sockaddr_in myAddr, remoteAddr;
+    char buffer[MAX_BUFFER];
 
-    if (!InitClient("127.0.0.1", 5678, &serverSocket, &serverAddr)) {
-        // Client initialization fail
+    if (!InitServer(5678, &serverSocket, &myAddr)) {
+        // Server initialization fail
+        printf("Server initialization fail\n");
     }
 
-    printf("Client Initialized\n %d %d\n", inet_ntoa(serverAddr.sin_addr), ntohs(serverAddr.sin_port));
+    while (true) {
+        RecvFrom(serverSocket, &remoteAddr, buffer);
 
-    while(live){
-        char buffer[MAX_BUFFER];
-        SendTo(serverSocket, &serverAddr, "XXX");
-
-        int len = RecvFrom(serverSocket, &serverAddr, buffer);
-
-        if (len) {
-            printf("%s\n", buffer);
-        } else {
-            printf("UDP Live\n");
-        }
+        printf("%s\n", buffer);
     }
 }
 

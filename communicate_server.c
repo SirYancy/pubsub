@@ -4,10 +4,13 @@
  * as a guideline for developing your own functions.
  */
 
+#include <pthread.h>
 #include <string.h>
 #include <stdio.h>
 #include <string.h>
 #include "communicate.h"
+
+#include "udp.h"
 
 #define MAXSUBSCRIBERS 5
 #define MAXSTRING 120
@@ -17,6 +20,14 @@ typedef struct SubNode
     char *ip;
     int port;
     char subscriptions[100][MAXSTRING];
+
+    int clientSocket;
+    struct sockaddr_in clientAddr;
+
+    char *buffer;
+
+    pthread_t clientThread;
+
     struct SubNode *next;
 } SubNode;
 
@@ -31,6 +42,8 @@ bool_t add_subscriber(char *ip, int port);
 bool_t remove_subscriber(char *ip, int port);
 bool_t subscribing(char *ip, int port, char *Article);
 bool_t unsubscribing(char *ip, int port, char *Article);
+
+void *client_thread_func(void *args);
 
 bool_t *
 joinserver_1_svc(char *IP, int ProgID, int ProgVers,  struct svc_req *rqstp)
@@ -178,6 +191,19 @@ bool_t add_subscriber(char *ip, int port)
     
     current->next = n;
     numSubs++;
+
+    // Creating client socket for UDP
+    if (!InitClient(ip, port, &(n->clientSocket), &(n->clientAddr))) {
+        // Client initialization fail
+        printf("Client initialization fail\n");
+    }
+
+    // Prepare buffer
+    n->buffer = NULL;
+
+    // Initialize client thread
+    pthread_create(&(n->clientThread), NULL, client_thread_func, (void *)n);
+
     return 1;
 
     //TODO ensure there are no duplicates?
@@ -353,3 +379,26 @@ void list_subscribers()
     }
 }
 
+void *client_thread_func(void *args) {
+    SubNode *node = args;
+
+    while (true) {
+    SendTo(node->clientSocket, &(node->clientAddr), "xxx");
+    sleep(1);
+    }
+
+    while (true) {
+        if (node->buffer != NULL) {
+            // Process buffer to check if this article is subscribed
+
+            // If the article is subscribed
+            SendTo(node->clientSocket, &(node->clientAddr), node->buffer);
+
+            // Clear the buffer
+            free(node->buffer);
+            node->buffer = NULL;
+        } else {
+            pthread_yield();
+        }
+    }
+}
