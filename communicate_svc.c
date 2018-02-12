@@ -12,10 +12,6 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
-#include <pthread.h>
-
-#include "udp.h"
-
 #ifndef SIG_PF
 #define SIG_PF void(*)(int)
 #endif
@@ -170,60 +166,35 @@ communicate_prog_1(struct svc_req *rqstp, register SVCXPRT *transp)
 	return;
 }
 
-#if 0
-void *udp_thread_func(void *udp_args) {
-    int serverSocket;
-    struct sockaddr_in myAddr, clientAddr;
-    char buffer[MAX_BUFFER];
+int
+main (int argc, char **argv)
+{
+	register SVCXPRT *transp;
 
-    printf("In udp thread ...\n");
+	pmap_unset (COMMUNICATE_PROG, COMMUNICATE_VERSION);
 
-    if (!InitServer(5678, &serverSocket, &myAddr)) {
-        // Initialize server failed
-        printf("Server init fail\n");
-    }
-    printf("Server initialized\n");
+	transp = svcudp_create(RPC_ANYSOCK);
+	if (transp == NULL) {
+		fprintf (stderr, "%s", "cannot create udp service.");
+		exit(1);
+	}
+	if (!svc_register(transp, COMMUNICATE_PROG, COMMUNICATE_VERSION, communicate_prog_1, IPPROTO_UDP)) {
+		fprintf (stderr, "%s", "unable to register (COMMUNICATE_PROG, COMMUNICATE_VERSION, udp).");
+		exit(1);
+	}
 
-    while (true) {
-        memset((char *)&clientAddr, '\0', sizeof(clientAddr));
+	transp = svctcp_create(RPC_ANYSOCK, 0, 0);
+	if (transp == NULL) {
+		fprintf (stderr, "%s", "cannot create tcp service.");
+		exit(1);
+	}
+	if (!svc_register(transp, COMMUNICATE_PROG, COMMUNICATE_VERSION, communicate_prog_1, IPPROTO_TCP)) {
+		fprintf (stderr, "%s", "unable to register (COMMUNICATE_PROG, COMMUNICATE_VERSION, tcp).");
+		exit(1);
+	}
 
-        RecvFrom(serverSocket, &clientAddr, buffer);
-
-        printf("%s\n", buffer);
-        printf("%d %d\n", ntohs(clientAddr.sin_port), inet_ntoa(clientAddr.sin_addr));
-    }
-}
-#endif
-
-int main(int argc, char **argv) {
-    register SVCXPRT *transp;
-    pthread_t udp_thread;
-
-    pmap_unset (COMMUNICATE_PROG, COMMUNICATE_VERSION);
-
-    transp = svcudp_create(RPC_ANYSOCK);
-    if (transp == NULL) {
-        fprintf (stderr, "%s", "cannot create udp service.");
-        exit(1);
-    }
-    if (!svc_register(transp, COMMUNICATE_PROG, COMMUNICATE_VERSION, communicate_prog_1, IPPROTO_UDP)) {
-        fprintf (stderr, "%s", "unable to register (COMMUNICATE_PROG, COMMUNICATE_VERSION, udp).");
-        exit(1);
-    }
-
-    transp = svctcp_create(RPC_ANYSOCK, 0, 0);
-    if (transp == NULL) {
-        fprintf (stderr, "%s", "cannot create tcp service.");
-        exit(1);
-    }
-    if (!svc_register(transp, COMMUNICATE_PROG, COMMUNICATE_VERSION, communicate_prog_1, IPPROTO_TCP)) {
-        fprintf (stderr, "%s", "unable to register (COMMUNICATE_PROG, COMMUNICATE_VERSION, tcp).");
-        exit(1);
-    }
-
-    svc_run ();
-    pthread_join(udp_thread, NULL);
-    fprintf (stderr, "%s", "svc_run returned");
-    exit (1);
-    /* NOTREACHED */
+	svc_run ();
+	fprintf (stderr, "%s", "svc_run returned");
+	exit (1);
+	/* NOTREACHED */
 }

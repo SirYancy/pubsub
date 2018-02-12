@@ -5,33 +5,23 @@
  */
 
 #include <stdio.h>
-#include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
-#include <pthread.h>
 #include "communicate.h"
 
-#include "udp.h"
-
 CLIENT *setup_rpc(char *host);
-
-void *rpc_thread_func(void *rpc_args);
-void *udp_thread_func(void *udp_args);
-
-int live = 1;
 
 bool_t join(CLIENT *clnt, char *ip, int port);
 bool_t leave(CLIENT *clnt, char *ip, int port);
 bool_t subscribe(CLIENT *clnt, char *ip, int port, char *Article);
 bool_t unsubscribe(CLIENT *clnt, char *ip, int port, char *Article);
+bool_t publish(CLIENT *clnt, char *ip, int port, char *Article);
 
 int
 main (int argc, char *argv[])
 {
     CLIENT *clnt;
 	char *host;
-
-    pthread_t rpc_thread, udp_thread;
 
 	if (argc < 2) {
 		printf ("usage: %s server_host\n", argv[0]);
@@ -40,19 +30,7 @@ main (int argc, char *argv[])
 	host = argv[1];
     
     clnt = setup_rpc(host);
-    
-    pthread_create(&udp_thread, NULL, udp_thread_func, NULL);
-    pthread_create(&rpc_thread, NULL, rpc_thread_func, NULL);
 
-    while(live){}
-
-    pthread_join(udp_thread, NULL);
-    pthread_join(rpc_thread, NULL);
-
-    printf("All threads joined\n Program terminating\n");
-
-
-    /**
     int r = join(clnt, "192.168.1.1", 8888);
 
     printf("Join Result: %d\n", r);
@@ -61,7 +39,7 @@ main (int argc, char *argv[])
 
     printf("Join Result: %d\n", r);
 
-    int s = subscribe(clnt, "192.168.1.1", 8888, "UMN;;;");
+    int s = subscribe(clnt, "192.168.1.1", 8888, "Science;UMN;;");
     
     printf("Subscribe Result: %d\n", s);
     
@@ -69,7 +47,15 @@ main (int argc, char *argv[])
     
     printf("Subscribe Result: %d\n", s);
 
-    int u = unsubscribe (clnt, "192.168.1.2", 8888, "Hemingway");
+    int p = publish (clnt, "192.168.1.1", 8888, "Food;MasterChef;Ramsay;cake");
+ 
+    printf("Publish Result: %d\n", p);
+
+    p = publish (clnt, "192.168.1.2", 8888, "Sports;NFL;Brady;;");
+
+    printf("Publish Result: %d\n", p);
+
+    int u = unsubscribe (clnt, "192.168.1.2", 8888, "English");
 
     printf("Unsubscribe Result: %d\n", u);
     
@@ -92,7 +78,6 @@ main (int argc, char *argv[])
     r = leave(clnt, "192.168.1.2", 8888);
 
     printf("Leave Result: %d\n", r);
-    */
     
 #ifndef	DEBUG
 	clnt_destroy (clnt);
@@ -114,58 +99,6 @@ CLIENT *setup_rpc(char *host)
 #endif	/* DEBUG */
 
     return clnt;
-}
-
-void *rpc_thread_func(void *rpc_args)
-{
-    int menu_choice;
-    while(live)
-    {
-        printf("Welcome!\n%s\n%s\n%s\n%s\n%s\n%s",
-                "What do you want to do?",
-                "1 - subscribe",
-                "2 - unsubscribe",
-                "3 - publish",
-                "4 - quit",
-                "> ");
-        scanf("%d", &menu_choice);
-        switch(menu_choice) {
-            case 1:
-                printf("Subscribing now\n");
-                break;
-            case 2:
-                printf("Unsubscribing now\n");
-                break;
-            case 3:
-                printf("Publishing now\n");
-                break;
-            case 4:
-                live = 0;
-                break;
-            default:
-                printf("I don't recognize that input\n");
-                break;
-        }
-    }
-
-}
-
-void *udp_thread_func(void *udp_args)
-{
-    int serverSocket;
-    struct sockaddr_in myAddr, remoteAddr;
-    char buffer[MAX_BUFFER];
-
-    if (!InitServer(5678, &serverSocket, &myAddr)) {
-        // Server initialization fail
-        printf("Server initialization fail\n");
-    }
-
-    while (true) {
-        RecvFrom(serverSocket, &remoteAddr, buffer);
-
-        printf("%s\n", buffer);
-    }
 }
 
 bool_t join(CLIENT *clnt, char *ip, int port)
@@ -219,6 +152,18 @@ bool_t unsubscribe(CLIENT *clnt, char *ip, int port, char *Article)
 	{
 		clnt_perror (clnt, "call failed");
 	} 
+
+	return *result;
+}
+
+bool_t publish(CLIENT *clnt, char *ip, int port, char *Article)
+{
+	bool_t *result;
+	result = publish_1(Article, ip, port, clnt);
+	if (result == (bool_t *) NULL) 
+	{
+		clnt_perror (clnt, "call failed");
+	}
 
 	return *result;
 }

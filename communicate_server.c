@@ -4,13 +4,10 @@
  * as a guideline for developing your own functions.
  */
 
-#include <pthread.h>
 #include <string.h>
 #include <stdio.h>
 #include <string.h>
 #include "communicate.h"
-
-#include "udp.h"
 
 #define MAXSUBSCRIBERS 5
 #define MAXSTRING 120
@@ -20,14 +17,6 @@ typedef struct SubNode
     char *ip;
     int port;
     char subscriptions[100][MAXSTRING];
-
-    int clientSocket;
-    struct sockaddr_in clientAddr;
-
-    char *buffer;
-
-    pthread_t clientThread;
-
     struct SubNode *next;
 } SubNode;
 
@@ -42,8 +31,7 @@ bool_t add_subscriber(char *ip, int port);
 bool_t remove_subscriber(char *ip, int port);
 bool_t subscribing(char *ip, int port, char *Article);
 bool_t unsubscribing(char *ip, int port, char *Article);
-
-void *client_thread_func(void *args);
+bool_t publishing(char *ip, int port, char *Article);
 
 bool_t *
 joinserver_1_svc(char *IP, int ProgID, int ProgVers,  struct svc_req *rqstp)
@@ -134,7 +122,15 @@ bool_t *
 publish_1_svc(char *Article, char *IP, int Port,  struct svc_req *rqstp)
 {
 	static bool_t  result;
-
+	result = publishing(IP, Port, Article);
+	if (result) 
+	{
+		printf("New published article: %s\n", Article);
+	}
+	else 
+	{
+		printf("Failed to publish article\n");
+	}
 	/*
 	 * insert server code here
 	 */
@@ -191,19 +187,6 @@ bool_t add_subscriber(char *ip, int port)
     
     current->next = n;
     numSubs++;
-
-    // Creating client socket for UDP
-    if (!InitClient(ip, port, &(n->clientSocket), &(n->clientAddr))) {
-        // Client initialization fail
-        printf("Client initialization fail\n");
-    }
-
-    // Prepare buffer
-    n->buffer = NULL;
-
-    // Initialize client thread
-    pthread_create(&(n->clientThread), NULL, client_thread_func, (void *)n);
-
     return 1;
 
     //TODO ensure there are no duplicates?
@@ -243,6 +226,54 @@ bool_t remove_subscriber(char *ip, int port)
 
 }
 
+bool_t publishing(char *ip, int port, char *Article)
+{
+	int i, s = 0;
+	char *type;
+        SubNode *current = subList;
+	bool_t send;        
+
+	for (i = 0; i < numSubs; i++) 
+	{
+		int j = 0;
+		while ((type = strsep(&Article, ";")) != NULL)
+		{	
+			if (send == 1 && j < 3)
+			{
+				j++;
+				continue;
+			}
+			else if (j == 3 && !strcmp(type, "")) //if contents field is empty 
+			{
+				printf("Illegal to publish this article\n");
+				send = 0; 
+				break;
+			}
+
+			for (s = 0; s < 100; s++) // go through subscriptions, and check if it matches a field in article  
+			{ 
+				if (!strcmp(type, current->subscriptions[s]))
+				{
+					send = 1; 
+					break; 
+				}
+			}
+			j++;
+		}
+		
+		if (send == 1) 
+		{
+			// TODO: send to the client
+			printf("Send to client\n"); 
+		}
+		current = current->next;
+	}
+	
+	// TODO: Insert logic to broadcast to all clients
+
+	return 1;
+}
+
 bool_t subscribing(char *ip, int port, char *Article)
 {
 	int i; 
@@ -257,10 +288,10 @@ bool_t subscribing(char *ip, int port, char *Article)
 		{
 			while ((type = strsep(&Article, ";")) != NULL)
 			{ 
-				if (strcmp(type, "") && (sizeof(type) <= MAXSTRING))
+				if (strcmp(type, ""))
 				{  
-					if (p == 3 && j == 0) { 
-// if only contents exist return 0						printf("Illegal article");
+					if (p == 3 && j == 0) { // if only contents exist return 0
+						printf("Illegal article");
 						return 0;
 					}
 					strcpy(current->subscriptions[j], type);
@@ -285,9 +316,7 @@ bool_t subscribing(char *ip, int port, char *Article)
 bool_t unsubscribing(char *ip, int port, char *Article)
 {
 	int i = 0;
-	int s = 0;  
-	int r = 0;
-	int q = 0;
+	int s = 0;  	
         int p = 0;
 	int u  = 0;
 
@@ -299,70 +328,33 @@ bool_t unsubscribing(char *ip, int port, char *Article)
                 {       
 			char *type;
                         char subs[100][MAXSTRING];
-			while ((type = strsep(&Article, ";")) != NULL)
-                        {       
-                        	strcpy(subs[q], type);
-				q++;
-                        }
-			for (s = 0; s < 100; s++) 
-			{	
-				for (r = 0; r < 100; r++) 
+
+			while ((type = strsep(&Article, ";")) != NULL) 
+			{
+				for (s = 0; s < 100; s++)
 				{
-					if (!strcmp(current->subscriptions[s], subs[r]) && strcmp(subs[r], "")) {
+					if (!strcmp(current->subscriptions[s], type) && strcmp(type, ""))
+					{	
 						u++;
 						strcpy(current->subscriptions[s], "");
-					}
+					} 
 				}
-
 			}
 			
 			if (u == 0)
 			{
 				return 0;
 			}
+			/*for (p = 0; p <100; p++) 
+			{
+				printf("client %s subscribed to %s\n", current->ip, current->subscriptions[p]);
+			} */
                         return 1;
-                }
+		}
                 current = current->next;
         }
         return 0;
 }
-
-/*bool_t unsubscribing(char *ip, int port, char *Article)
-{
-        int i;
-        int j = 0;
-        int p = 0;
-        SubNode *current = subList;
-        char *type;
-
-        for (i = 0; i < numSubs; i++) // go through all the clients to look for right one
-        {
-                if (!strcmp(current->ip, ip) && current->port == port)
-                {
-                        while ((type = strsep(&Article, ";")) != NULL)
-                        {
-                                if (strcmp(type, ""))
-                                {
-                                        if (p == 3 && j == 0) {
-// if only contents exist return 0                                              printf("Illegal article");
-                                                return 0;
-                                        }
-                                        current->subscriptions[j] = type;
-                                        j++;
-                                }
-                                p++;
-                        }
-                        if (j == 0) // if nothing, return 0
-                        {
-                                printf("Illegal article");
-                                return 0;
-                        }
-                        return 1;
-                }
-                current = current->next;
-        }
-        return 0;
-}*/
 
 void print_sub(SubNode *n)
 {
@@ -379,26 +371,3 @@ void list_subscribers()
     }
 }
 
-void *client_thread_func(void *args) {
-    SubNode *node = args;
-
-    while (true) {
-    SendTo(node->clientSocket, &(node->clientAddr), "xxx");
-    sleep(1);
-    }
-
-    while (true) {
-        if (node->buffer != NULL) {
-            // Process buffer to check if this article is subscribed
-
-            // If the article is subscribed
-            SendTo(node->clientSocket, &(node->clientAddr), node->buffer);
-
-            // Clear the buffer
-            free(node->buffer);
-            node->buffer = NULL;
-        } else {
-            pthread_yield();
-        }
-    }
-}
