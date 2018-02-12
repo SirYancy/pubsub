@@ -228,22 +228,50 @@ bool_t remove_subscriber(char *ip, int port)
 
 bool_t publishing(char *ip, int port, char *Article)
 {
-	int j = 0;
+	int i, s = 0;
 	char *type;
-	while ((type = strsep(&Article, ";")) != NULL)
-	{ 
-		if (j == 3 && !strcmp(type, "")) //if contents field is empty 
-		{
-			printf("Illegal to publish this article\n");
-			return 0;
+        SubNode *current = subList;
+	bool_t send;        
+
+	for (i = 0; i < numSubs; i++) 
+	{
+		int j = 0;
+		while ((type = strsep(&Article, ";")) != NULL)
+		{	
+			if (send == 1 && j < 3)
+			{
+				j++;
+				continue;
+			}
+			else if (j == 3 && !strcmp(type, "")) //if contents field is empty 
+			{
+				printf("Illegal to publish this article\n");
+				send = 0; 
+				break;
+			}
+
+			for (s = 0; s < 100; s++) // go through subscriptions, and check if it matches a field in article  
+			{ 
+				if (!strcmp(type, current->subscriptions[s]))
+				{
+					send = 1; 
+					break; 
+				}
+			}
+			j++;
 		}
-		j++;
+		
+		if (send == 1) 
+		{
+			// TODO: send to the client
+			printf("Send to client\n"); 
+		}
+		current = current->next;
 	}
 	
 	// TODO: Insert logic to broadcast to all clients
 
 	return 1;
-
 }
 
 bool_t subscribing(char *ip, int port, char *Article)
