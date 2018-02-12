@@ -155,9 +155,8 @@ ping_1_svc(struct svc_req *rqstp)
 {
 	static bool_t  result;
 
-	/*
-	 * insert server code here
-	 */
+    printf("Ping Received from client\n");
+    result = 1;
 
 	return &result;
 }

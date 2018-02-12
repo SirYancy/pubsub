@@ -7,9 +7,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <pthread.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
 #include "communicate.h"
 
 CLIENT *setup_rpc(char *host);
+
+void *ping_thread_func(void *ping_args);
+void *rpc_thread_func(void *rpc_args);
+void *udp_thread_func(void *udp_args);
+
+int live = 1;
 
 bool_t join(CLIENT *clnt, char *ip, int port);
 bool_t leave(CLIENT *clnt, char *ip, int port);
@@ -21,15 +31,29 @@ int
 main (int argc, char *argv[])
 {
     CLIENT *clnt;
-	char *host;
+    char *host;
+    pthread_t rpc_thread, udp_thread, ping_thread;
 
-	if (argc < 2) {
-		printf ("usage: %s server_host\n", argv[0]);
-		exit (1);
-	}
-	host = argv[1];
-    
+    if (argc < 2) {
+        printf ("usage: %s server_host\n", argv[0]);
+        exit (1);
+    }
+    host = argv[1];
+
     clnt = setup_rpc(host);
+
+    //pthread_create(&udp_thread, NULL, udp_thread_func, NULL);
+    pthread_create(&rpc_thread, NULL, rpc_thread_func, NULL);
+    pthread_create(&ping_thread, NULL, ping_thread_func, (void *)clnt);
+
+    while(live){}
+
+    //pthread_join(udp_thread, NULL);
+    pthread_join(rpc_thread, NULL);
+    pthread_join(ping_thread, NULL);
+
+    /** TEMPORARY TESTING CALLS **/
+    printf("All threads joined\n Program terminating\n");;
 
     int r = join(clnt, "192.168.1.1", 8888);
 
@@ -40,15 +64,15 @@ main (int argc, char *argv[])
     printf("Join Result: %d\n", r);
 
     int s = subscribe(clnt, "192.168.1.1", 8888, "Science;UMN;;");
-    
+
     printf("Subscribe Result: %d\n", s);
-    
+
     s = subscribe (clnt, "192.168.1.2", 8888, "English;Hemingway");
-    
+
     printf("Subscribe Result: %d\n", s);
 
     int p = publish (clnt, "192.168.1.1", 8888, "Food;MasterChef;Ramsay;cake");
- 
+
     printf("Publish Result: %d\n", p);
 
     p = publish (clnt, "192.168.1.2", 8888, "Sports;NFL;Brady;;");
@@ -58,7 +82,7 @@ main (int argc, char *argv[])
     int u = unsubscribe (clnt, "192.168.1.2", 8888, "English");
 
     printf("Unsubscribe Result: %d\n", u);
-    
+
     u = unsubscribe (clnt, "192.168.1.1", 8888, "UMN");
 
     printf("Unsubscribe Result: %d\n", u);
@@ -78,9 +102,9 @@ main (int argc, char *argv[])
     r = leave(clnt, "192.168.1.2", 8888);
 
     printf("Leave Result: %d\n", r);
-    
+
 #ifndef	DEBUG
-	clnt_destroy (clnt);
+    clnt_destroy (clnt);
 #endif	 /* DEBUG */
 
     exit (0);
@@ -91,11 +115,11 @@ CLIENT *setup_rpc(char *host)
     CLIENT *clnt;
 
 #ifndef	DEBUG
-	clnt = clnt_create (host, COMMUNICATE_PROG, COMMUNICATE_VERSION, "udp");
-	if (clnt == NULL) {
-		clnt_pcreateerror (host);
-		exit (1);
-	}
+    clnt = clnt_create (host, COMMUNICATE_PROG, COMMUNICATE_VERSION, "udp");
+    if (clnt == NULL) {
+        clnt_pcreateerror (host);
+        exit (1);
+    }
 #endif	/* DEBUG */
 
     return clnt;
@@ -103,26 +127,26 @@ CLIENT *setup_rpc(char *host)
 
 bool_t join(CLIENT *clnt, char *ip, int port)
 {
-	bool_t  *result;
+    bool_t  *result;
 
-	result = join_1(ip, port, clnt);
+    result = join_1(ip, port, clnt);
 
-	if (result == (bool_t *) NULL) {
-		clnt_perror (clnt, "call failed");
-	}
+    if (result == (bool_t *) NULL) {
+        clnt_perror (clnt, "call failed");
+    }
 
     return *result;
 }
 
 bool_t leave(CLIENT *clnt, char *ip, int port)
 {
-	bool_t  *result;
+    bool_t  *result;
 
-	result = leave_1(ip, port, clnt);
+    result = leave_1(ip, port, clnt);
 
-	if (result == (bool_t *) NULL) {
-		clnt_perror (clnt, "call failed");
-	}
+    if (result == (bool_t *) NULL) {
+        clnt_perror (clnt, "call failed");
+    }
 
     return *result;
 
@@ -130,102 +154,182 @@ bool_t leave(CLIENT *clnt, char *ip, int port)
 
 bool_t subscribe(CLIENT *clnt, char *ip, int port, char *Article)
 {
-	bool_t *result; 
+    bool_t *result; 
 
-	result = subscribe_1(ip, port, Article, clnt);
+    result = subscribe_1(ip, port, Article, clnt);
 
-	if (result == (bool_t *) NULL) {
-                clnt_perror (clnt, "call failed");
-        }
+    if (result == (bool_t *) NULL) {
+        clnt_perror (clnt, "call failed");
+    }
 
-	return *result;
+    return *result;
 
 }
 
 bool_t unsubscribe(CLIENT *clnt, char *ip, int port, char *Article) 
 {
 
-	bool_t *result; 
+    bool_t *result; 
 
-	result = unsubscribe_1(ip, port, Article, clnt);
-	if (result == (bool_t *) NULL) 
-	{
-		clnt_perror (clnt, "call failed");
-	} 
+    result = unsubscribe_1(ip, port, Article, clnt);
+    if (result == (bool_t *) NULL) 
+    {
+        clnt_perror (clnt, "call failed");
+    } 
 
-	return *result;
+    return *result;
 }
 
 bool_t publish(CLIENT *clnt, char *ip, int port, char *Article)
 {
-	bool_t *result;
-	result = publish_1(Article, ip, port, clnt);
-	if (result == (bool_t *) NULL) 
-	{
-		clnt_perror (clnt, "call failed");
-	}
+    bool_t *result;
+    result = publish_1(Article, ip, port, clnt);
+    if (result == (bool_t *) NULL) 
+    {
+        clnt_perror (clnt, "call failed");
+    }
 
-	return *result;
+    return *result;
 }
-/*
-void
-communicate_prog_1(char *host)
-{
-	bool_t  *result_1;
-	char *joinserver_1_IP;
-	int joinserver_1_ProgID;
-	int joinserver_1_ProgVers;
-	bool_t  *result_2;
-	char *leaveserver_1_IP;
-	int leaveserver_1_ProgID;
-	int leaveserver_1_ProgVers;
-	bool_t  *result_5;
-	char *subscribe_1_IP;
-	int subscribe_1_Port;
-	char *subscribe_1_Article;
-	bool_t  *result_6;
-	char *unsubscribe_1_IP;
-	int unsubscribe_1_Port;
-	char *unsubscribe_1_Article;
-	bool_t  *result_7;
-	char *publish_1_Article;
-	char *publish_1_IP;
-	int publish_1_Port;
-	bool_t  *result_8;
-	char *publishserver_1_Article;
-	char *publishserver_1_IP;
-	int publishserver_1_Port;
-	bool_t  *result_9;
 
-	result_1 = joinserver_1(joinserver_1_IP, joinserver_1_ProgID, joinserver_1_ProgVers, clnt);
-	if (result_1 == (bool_t *) NULL) {
-		clnt_perror (clnt, "call failed");
-	}
-	result_2 = leaveserver_1(leaveserver_1_IP, leaveserver_1_ProgID, leaveserver_1_ProgVers, clnt);
-	if (result_2 == (bool_t *) NULL) {
-		clnt_perror (clnt, "call failed");
-	}
-	result_5 = subscribe_1(subscribe_1_IP, subscribe_1_Port, subscribe_1_Article, clnt);
-	if (result_5 == (bool_t *) NULL) {
-		clnt_perror (clnt, "call failed");
-	}
-	result_6 = unsubscribe_1(unsubscribe_1_IP, unsubscribe_1_Port, unsubscribe_1_Article, clnt);
-	if (result_6 == (bool_t *) NULL) {
-		clnt_perror (clnt, "call failed");
-	}
-	result_7 = publish_1(publish_1_Article, publish_1_IP, publish_1_Port, clnt);
-	if (result_7 == (bool_t *) NULL) {
-		clnt_perror (clnt, "call failed");
-	}
-	result_8 = publishserver_1(publishserver_1_Article, publishserver_1_IP, publishserver_1_Port, clnt);
-	if (result_8 == (bool_t *) NULL) {
-		clnt_perror (clnt, "call failed");
-	}
-	result_9 = ping_1(clnt);
-	if (result_9 == (bool_t *) NULL) {
-		clnt_perror (clnt, "call failed");
-	}
+void *rpc_thread_func(void *rpc_args)
+{
+    int menu_choice;
+    while(live)
+    {
+        printf("Welcome!\n%s\n%s\n%s\n%s\n%s\n%s",
+                "What do you want to do?",
+                "1 - subscribe",
+                "2 - unsubscribe",
+                "3 - publish",
+                "4 - quit",
+                "> ");
+        scanf("%d", &menu_choice);
+        switch(menu_choice) {
+            case 1:
+                printf("Subscribing now\n");
+                break;
+            case 2:
+                printf("Unsubscribing now\n");
+                break;
+            case 3:
+                printf("Publishing now\n");
+                break;
+            case 4:
+                live = 0;
+                break;
+            default:
+                printf("I don't recognize that input\n");
+                break;
+        }
+    }
+}
+
+void *ping_thread_func(void *ping_args)
+{
+    CLIENT *clnt = (CLIENT *)ping_args;
+    bool_t *result;
+
+    while(live){
+        result = ping_1(clnt);
+        printf("Sending Ping\n");
+        if (result == (bool_t *) NULL) {
+            clnt_perror(clnt, "Ping failed");
+            live = 0;
+        }
+        printf("Ping Received\n");
+
+        sleep(60);
+    }
+}
+
+/**
+ * TODO Not functioning yet
+void *udp_thread_func(void *udp_args)
+{
+    int serverSocket;
+    struct sockaddr_in serverAddr;
+
+    if (!InitClient("127.0.0.1", 5678, &serverSocket, &serverAddr)) {
+        // Client initialization fail
+    }
+
+    printf("Client Initialized\n %s %d\n", inet_ntoa(serverAddr.sin_addr), ntohs(serverAddr.sin_port));
+
+    while(live){
+        char buffer[MAX_BUFFER];
+        SendTo(serverSocket, &serverAddr, "XXX");
+
+        int len = RecvFrom(serverSocket, &serverAddr, buffer);
+
+        if (len) {
+            printf("%s\n", buffer);
+        } else {
+            printf("UDP Live\n");
+        }
+    }
 }
 */
+
+/*
+   void
+   communicate_prog_1(char *host)
+   {
+   bool_t  *result_1;
+   char *joinserver_1_IP;
+   int joinserver_1_ProgID;
+   int joinserver_1_ProgVers;
+   bool_t  *result_2;
+   char *leaveserver_1_IP;
+   int leaveserver_1_ProgID;
+   int leaveserver_1_ProgVers;
+   bool_t  *result_5;
+   char *subscribe_1_IP;
+   int subscribe_1_Port;
+   char *subscribe_1_Article;
+   bool_t  *result_6;
+   char *unsubscribe_1_IP;
+   int unsubscribe_1_Port;
+   char *unsubscribe_1_Article;
+   bool_t  *result_7;
+   char *publish_1_Article;
+   char *publish_1_IP;
+   int publish_1_Port;
+   bool_t  *result_8;
+   char *publishserver_1_Article;
+   char *publishserver_1_IP;
+   int publishserver_1_Port;
+   bool_t  *result_9;
+
+   result_1 = joinserver_1(joinserver_1_IP, joinserver_1_ProgID, joinserver_1_ProgVers, clnt);
+   if (result_1 == (bool_t *) NULL) {
+   clnt_perror (clnt, "call failed");
+   }
+   result_2 = leaveserver_1(leaveserver_1_IP, leaveserver_1_ProgID, leaveserver_1_ProgVers, clnt);
+   if (result_2 == (bool_t *) NULL) {
+   clnt_perror (clnt, "call failed");
+   }
+   result_5 = subscribe_1(subscribe_1_IP, subscribe_1_Port, subscribe_1_Article, clnt);
+   if (result_5 == (bool_t *) NULL) {
+   clnt_perror (clnt, "call failed");
+   }
+   result_6 = unsubscribe_1(unsubscribe_1_IP, unsubscribe_1_Port, unsubscribe_1_Article, clnt);
+   if (result_6 == (bool_t *) NULL) {
+   clnt_perror (clnt, "call failed");
+   }
+   result_7 = publish_1(publish_1_Article, publish_1_IP, publish_1_Port, clnt);
+   if (result_7 == (bool_t *) NULL) {
+   clnt_perror (clnt, "call failed");
+   }
+   result_8 = publishserver_1(publishserver_1_Article, publishserver_1_IP, publishserver_1_Port, clnt);
+   if (result_8 == (bool_t *) NULL) {
+   clnt_perror (clnt, "call failed");
+   }
+   result_9 = ping_1(clnt);
+   if (result_9 == (bool_t *) NULL) {
+   clnt_perror (clnt, "call failed");
+   }
+   }
+   */
 
 
