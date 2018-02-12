@@ -4,6 +4,7 @@
 //#include <rpc/pmap_clnt.h>
 #include <string.h>
 #include <memory.h>
+#include <pthread.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -13,8 +14,8 @@
 #define COMMUNICATE_PROG 0x13131344
 #define COMMUNICATE_VERSION 1
 
-#define SERVER "128.101.35.147"
-#define PORT 5105
+#define SERVER "127.0.0.1" //"128.101.35.147"
+#define PORT 5104 //5105
 #define BUFLEN 512
 
 struct sockaddr_in si_me, si_server;
@@ -27,10 +28,14 @@ void Register(char *message);
 void Deregister(char *message);
 char *GetList(char *message);
 
+void *ping_thread_func(void *arg);
+
 int main(void)
 {
     buf = (char *)malloc(BUFLEN * sizeof(char));
     message = (char *)malloc(BUFLEN * sizeof(char));
+
+    pthread_t ping_thread;
 
     if ((s=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1)
     {
@@ -76,6 +81,8 @@ int main(void)
         exit(1);
     }
 
+    pthread_create(&ping_thread, NULL, ping_thread_func, NULL);
+
     printf("Registering\n");
 
     sprintf(buf, "Register;RPC;%s;%d;%d;%d%c", 
@@ -89,6 +96,22 @@ int main(void)
 
     Register(buf);
 
+    memset(buf, '\0', BUFLEN);
+
+    //TODO
+    
+    char *result = (char *)malloc(BUFLEN*sizeof(char));
+
+    printf("Attempting to receive...\n");
+
+    if(recvfrom(s, result, BUFLEN, 0, (struct sockaddr *) &si_server, &slen) < 0) {
+        perror("GetList recvfrom()");
+    }
+    
+    printf("result: %s\n", result);
+
+    //TODO
+
     printf("Geting List\n");
 
     sprintf(buf, "GetList;RPC;%s;%d%c",
@@ -98,11 +121,13 @@ int main(void)
 
     printf("Buffer: %s\n", buf);
 
-    GetList(buf);
+    message = GetList(buf);
 
     printf("GetList: %s\n", message);
 
     printf("Deregistering\n");
+
+    memset(buf, '\0', BUFLEN);
 
     sprintf(buf, "Deregister;RPC;%s;%d%c", 
             inet_ntoa(si_me.sin_addr), 
@@ -112,6 +137,19 @@ int main(void)
     printf("Buffer: %s\n", buf);
 
     Deregister(buf);
+}
+
+void *ping_thread_func(void *arg)
+{
+    char *result = (char *)malloc(BUFLEN*sizeof(char));
+
+    printf("Attempting to receive...\n");
+
+    if(recvfrom(s, result, BUFLEN, 0, (struct sockaddr *) &si_server, &slen) < 0) {
+        perror("GetList recvfrom()");
+    }
+    
+    printf("result: %s\n", result);
 }
 
 /**
