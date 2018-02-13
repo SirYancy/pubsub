@@ -10,6 +10,7 @@
 #include <netinet/in.h>
 
 #include <pthread.h>
+#include "udp.h"
 
 #define COMMUNICATE_PROG 0x13131344
 #define COMMUNICATE_VERSION 1
@@ -18,9 +19,28 @@
 #define PORT 5104 //5105
 #define BUFLEN 512
 
+
+#define SERVER_IP "127.0.0.1"
+//#define SERVER_IP "128.101.35.147"
+#define SERVER_PORT 5104
+#define MY_IP "128.101.118.60"
+//#define MY_IP "127.0.0.1"
+#define MY_PORT "5678"
+
+#define REGISTER_MSG "Register;RPC;128.101.118.60;5678;0x13131344;1"
+#define DEREGISTER_MSG "Deregister;RPC;128.101.118.60;5678"
+#define GETLIST_MSG "Getlist;RPC;128.101.118.60;5678"
+
 struct sockaddr_in si_me, si_server;
 int s;
 socklen_t slen = sizeof(si_me);
+
+typedef struct SocketInfomation {
+    struct sockaddr_in clientAddr;
+    struct sockaddr_in serverAddr;
+    int serverSocket;
+    int clientSocket;
+} SocketInfo;
 
 char *buf, *message;
 
@@ -30,6 +50,50 @@ char *GetList(char *message);
 
 void *ping_thread_func(void *arg);
 
+int main(int argc, char *argv[]) {
+    char buffer[MAX_BUFFER];
+    pthread_t pingThread;
+
+    SocketInfo info;
+
+    printf("Listening on port: %d\n", atoi(argv[1]));
+
+    InitServer(atoi(argv[1]), &info.clientSocket, &info.clientAddr);
+    InitClient(SERVER_IP, SERVER_PORT, &info.serverSocket, &info.serverAddr);
+
+    pthread_create(&pingThread, NULL, ping_thread_func, &info);
+
+    // Create register message
+    sprintf(buffer, "Register;RPC;%s;%d;%x;%d", MY_IP, atoi(argv[1]), COMMUNICATE_PROG, COMMUNICATE_VERSION);
+    printf("%s\n", buffer);
+
+    // Register
+    SendTo(info.serverSocket, &(info.serverAddr), buffer);
+
+    // Create get list message
+    sprintf(buffer, "GetList;RPC;%s;%d", MY_IP, atoi(argv[1]));
+    printf("%s\n", buffer);
+
+    // GetList
+    SendTo(info.serverSocket, &(info.serverAddr), buffer);
+    RecvFrom(info.serverSocket, &(info.serverAddr), buffer);
+
+    printf("%s\n", buffer);
+
+    // Create de-register message
+    sprintf(buffer, "Deregister;RPC;%s;%d", MY_IP, atoi(argv[1]));
+    printf("%s\n", buffer);
+
+    // Deregister
+    //SendTo(info.serverSocket, &(info.serverAddr), buffer);
+
+    sleep(60);
+
+    return 0;
+}
+
+
+#if 0
 int main(void)
 {
     buf = (char *)malloc(BUFLEN * sizeof(char));
@@ -138,18 +202,26 @@ int main(void)
 
     Deregister(buf);
 }
-
+#endif
 void *ping_thread_func(void *arg)
 {
-    char *result = (char *)malloc(BUFLEN*sizeof(char));
+    char buffer[MAX_BUFFER];
+    SocketInfo *info = arg;
 
-    printf("Attempting to receive...\n");
+    while (true) {
+        RecvFrom(info->clientSocket, &(info->clientAddr), buffer);
 
-    if(recvfrom(s, result, BUFLEN, 0, (struct sockaddr *) &si_server, &slen) < 0) {
-        perror("GetList recvfrom()");
+        if (strncmp("heartbeat", buffer, strlen(buffer)) == 0) {
+            // This is heartbeat, send the same thing back to server
+            SendTo(info->clientSocket, &(info->clientAddr), "heartbeat");
+
+            printf("%s\n", buffer);
+        } else {
+            printf("%s\n", buffer);
+        }
+
+        sleep(1);
     }
-    
-    printf("result: %s\n", result);
 }
 
 /**
