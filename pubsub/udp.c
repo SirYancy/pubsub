@@ -1,4 +1,5 @@
 #include "udp.h"
+#include <errno.h>
 
 bool InitServer(int port, int *sockDesc, struct sockaddr_in *sockAddr) {
     // creating socket
@@ -36,6 +37,7 @@ bool InitClient(char *IP, int port, int *sockDesc, struct sockaddr_in *sockAddr)
     sockAddr->sin_family = AF_INET;
     sockAddr->sin_port = htons(port);
     sockAddr->sin_addr.s_addr = inet_addr(IP);
+    printf("udp %d %d\n", port, ntohs(sockAddr->sin_port)); 
 
     return true;
 }
@@ -46,7 +48,7 @@ void Destroy(int sockDesc) {
 
 bool SendTo(int sockDesc, struct sockaddr_in *sockAddr, char *buffer) {
     if (sendto(sockDesc, buffer, strlen(buffer), 0, (struct sockaddr *) sockAddr, sizeof(struct sockaddr_in)) < 0) {
-        printf("Error sending\n");
+        fprintf(stderr, "Error sending: %s\n", strerror(errno));
         return false;
     }
 

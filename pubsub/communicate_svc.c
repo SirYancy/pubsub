@@ -193,12 +193,6 @@ main (int argc, char **argv)
 		exit(1);
 	}
 
-	int serverSocket;
-	struct sockaddr_in serverAddr;
-        if (!InitServer(0, &serverSocket, &serverAddr)) 
-	{
-		printf("couldn't initialise server");
-	}
 	svc_run ();
 	fprintf (stderr, "%s", "svc_run returned");
 	exit (1);

@@ -252,17 +252,29 @@ void *udp_thread_func(void *udp_args)
 {
     int serverSocket;
     struct sockaddr_in serverAddr;
-
-    InitClient("127.0.0.1", 8888, &serverSocket, &serverAddr);
-
+    CLIENT *clnt;
+    char *host = "127.0.0.1";
+    clnt = setup_rpc(host);
+    InitClient("192.168.1.1", 8888, &serverSocket, &serverAddr);
+    
     printf("Client Initialized\n %s %d\n", inet_ntoa(serverAddr.sin_addr), ntohs(serverAddr.sin_port));
-
+    int r = join(clnt, "192.168.1.1", 8888);
+        
+    printf("Join Result: %d\n", r);
+        
+    r = join(clnt, "192.168.1.2", 8888);
+        
+    printf("Join Result: %d\n", r);
+        
+    int s = subscribe(clnt, "192.168.1.1", 8888, "Science;UMN;;");
+    int p = publish (clnt, "192.168.1.2", 8888, "Science;NatGeo;Tyson;moon");    
     while(1){
+    
         char buffer[MAXSTRING];
-        SendTo(serverSocket, &serverAddr, "XXX");
-
-        int len = RecvFrom(serverSocket, &serverAddr, buffer);
-
+//        SendTo(serverSocket, &serverAddr, "XXX");
+        
+	int len = RecvFrom(serverSocket, &serverAddr, buffer);
+	printf("waiting\n");
         if (len) {
             printf("%s\n", buffer);
         } else {

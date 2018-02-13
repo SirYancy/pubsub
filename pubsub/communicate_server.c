@@ -19,8 +19,9 @@ typedef struct SubNode
     char *ip;
     int port;
     char subscriptions[100][MAXSTRING];
+    int subs;
     int clientSocket; 
-    struct sockaddr_in clientAddr;
+    struct sockaddr_in *clientAddr;
     struct SubNode *next;
 } SubNode;
 
@@ -169,11 +170,14 @@ bool_t add_subscriber(char *ip, int port)
 
     SubNode *n = (SubNode*)malloc(sizeof(SubNode));
     
-    n->ip = malloc(strlen(ip) * sizeof(char));
+    n->ip = malloc((strlen(ip)+1) * sizeof(char));
     strcpy(n->ip, ip);
     n->port = port;
     n->next = NULL;
 
+    n->subs = 0;
+    n->clientSocket = 0;  
+    n->clientAddr = (struct sockaddr_in *) malloc(sizeof(struct sockaddr_in));
     if(subList == NULL){
         subList = n;
         numSubs++;
@@ -186,11 +190,11 @@ bool_t add_subscriber(char *ip, int port)
     
     current->next = n;
     numSubs++;
-    if (!InitClient(ip, port, &(n->clientSocket), &(n->clientAddr)))
+    
+    if (!InitClient(ip, port, &(n->clientSocket), n->clientAddr))
     {
 	printf("Addsub failed to initialise client");
     }
-    printf("sock %d %s\n", n->clientSocket, n->clientAddr.sin_addr);
     return 1;
     
     //TODO ensure there are no duplicates?
@@ -204,6 +208,7 @@ bool_t remove_subscriber(char *ip, int port)
     {
         subList = current->next;
         free(current->ip);
+	free(current->clientAddr);
         free(current);
         numSubs--;
         return 1;
@@ -220,6 +225,7 @@ bool_t remove_subscriber(char *ip, int port)
         {
             tmp->next = current->next;
             free(current->ip);
+	    free(current->clientAddr);
             free(current);
             numSubs--;
             return 1;
@@ -236,28 +242,45 @@ bool_t publishing(char *ip, int port, char *Article)
 	char *type;
         SubNode *current = subList;
 	bool_t send;        
+	char *toSend = Article;
+        //temporarily moved server socket initialisation to test it
+	int serverSocket;
+        struct sockaddr_in serverAddr;
+        if (!InitServer(SERVERPORT, &serverSocket, &serverAddr))
+        {
+                printf("couldn't initialise server");
+        }
 	
         for (i = 0; i < numSubs; i++) 
 	{
+		send = 0;
 		int j = 0;
+		int e = 0;
 		while ((type = strsep(&Article, ";")) != NULL)
 		{	
-			if (send == 1 && j < 3)
+			if ((send == 1 && j < 3)) // if at least one of 1st 3 fields is sendable, continue to check contents field
 			{
 				j++;
 				continue;
 			}
-			else if (j == 3 && !strcmp(type, "")) //if contents field is empty 
+			else if ((j == 3 && !strcmp(type, "")) || e == 3) //if contents field is empty or all first 3 empty 
 			{
 				printf("Illegal to publish this article\n");
 				send = 0; 
 				break;
 			}
+			else if(!strcmp(type, "")) //if current field empty continue to next field
+                        {
+                                e++;
+				j++;
+                                continue;
+                        }
 
-			for (s = 0; s < 100; s++) // go through subscriptions, and check if it matches a field in article  
+			for (s = 0; s < current->subs; s++) // go through subscriptions, and check if it matches a field in article  
 			{ 
 				if (!strcmp(type, current->subscriptions[s]))
 				{
+					// printf("client %s subbed to %s\n", current->ip, current->subscriptions[s]);
 					send = 1; 
 					break; 
 				}
@@ -267,18 +290,15 @@ bool_t publishing(char *ip, int port, char *Article)
 		
 		if (send == 1) 
 		{
-			// TODO: send to the client
-			printf("Send to client\n");
-
-			if(!SendTo(current->clientSocket, &(current->clientAddr), Article)) 
+			printf("Send %s to client %s\n", toSend, current->ip);
+			if (!SendTo(current->clientSocket, current->clientAddr, toSend)) 
 			{
-				printf("publish unable to send to client %s\n", current->ip);
-			}
+				printf("couldn't send to client\n");
+				return 0;
+			} 
 		}
 		current = current->next;
 	}
-	
-	// TODO: Insert logic to broadcast to all clients
 
 	return 1;
 }
@@ -299,11 +319,12 @@ bool_t subscribing(char *ip, int port, char *Article)
 			{ 
 				if (strcmp(type, ""))
 				{  
-					if (p == 3 && j == 0) { // if only contents exist return 0
+					if (p == 3) { // if contents exist return 0
 						printf("Illegal article");
 						return 0;
 					}
 					strcpy(current->subscriptions[j], type);
+					current->subs = current->subs + 1;	
 					j++;
 				}
 				p++;
@@ -346,6 +367,7 @@ bool_t unsubscribing(char *ip, int port, char *Article)
 					{	
 						u++;
 						strcpy(current->subscriptions[s], "");
+						current->subs = current->subs - 1;
 					} 
 				}
 			}
