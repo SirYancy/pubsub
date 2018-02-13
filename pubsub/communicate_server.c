@@ -190,7 +190,6 @@ bool_t add_subscriber(char *ip, int port)
     
     current->next = n;
     numSubs++;
-    
     if (!InitClient(ip, port, &(n->clientSocket), n->clientAddr))
     {
 	printf("Addsub failed to initialise client");
@@ -243,7 +242,7 @@ bool_t publishing(char *ip, int port, char *Article)
         SubNode *current = subList;
 	bool_t send;        
 	char *toSend = Article;
-        //temporarily moved server socket initialisation to test it
+        
 	int serverSocket;
         struct sockaddr_in serverAddr;
         if (!InitServer(SERVERPORT, &serverSocket, &serverAddr))
@@ -269,7 +268,7 @@ bool_t publishing(char *ip, int port, char *Article)
 				send = 0; 
 				break;
 			}
-			else if(!strcmp(type, "")) //if current field empty continue to next field
+			else if(!strcmp(type, ""))
                         {
                                 e++;
 				j++;
@@ -327,6 +326,7 @@ bool_t subscribing(char *ip, int port, char *Article)
 					current->subs = current->subs + 1;	
 					j++;
 				}
+				}
 				p++;
 			}	
 			if (j == 0) // if nothing, return 0
@@ -337,7 +337,7 @@ bool_t subscribing(char *ip, int port, char *Article)
 			//return 1;
 		
 		return 1;
-		}
+		
 		current = current->next;
 	}
 	return 0; 	
