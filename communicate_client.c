@@ -276,7 +276,6 @@ void *udp_thread_func(void *udp_args)
         char buffer[MAXSTRING];
 //        SendTo(serverSocket, &serverAddr, "XXX");
 
-        printf("udp socket of first client %d\n", c1Socket);
         int len = RecvFrom(c1Socket, &c1Addr, buffer);
         printf("waiting\n");
         if (len) {

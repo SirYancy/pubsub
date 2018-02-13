@@ -45,6 +45,7 @@ void Destroy(int sockDesc) {
 }
 
 bool SendTo(int sockDesc, struct sockaddr_in *sockAddr, char *buffer) {
+    printf("sending\n");
     if (sendto(sockDesc, buffer, strlen(buffer), 0, (struct sockaddr *) sockAddr, sizeof(struct sockaddr_in)) < 0) {
         printf("Error sending\n");
         return false;

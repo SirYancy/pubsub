@@ -20,7 +20,6 @@ typedef struct SubNode
     int port;
     char subscriptions[100][MAXSTRING];
     int subs;
-    int clientSocket;
     struct sockaddr_in *clientAddr;
     struct SubNode *next;
 } SubNode;
@@ -177,7 +176,14 @@ bool_t add_subscriber(char *ip, int port)
 
     n->subs = 0;
     //n->clientSocket = socket;
-    //n->clientAddr = sockAddr; //(struct sockaddr_in *) malloc(sizeof(struct sockaddr_in));
+    n->clientAddr = (struct sockaddr_in *)malloc(sizeof(struct sockaddr_in));
+    memset((char *)n->clientAddr, '\0', sizeof(struct sockaddr_in));
+
+    /*Configure settings in address struct*/
+    (n->clientAddr)->sin_family = AF_INET;
+    (n->clientAddr)->sin_port = htons(port);
+    (n->clientAddr)->sin_addr.s_addr = inet_addr(ip);
+    
     if(subList == NULL){
         subList = n;
         numSubs++;
@@ -252,7 +258,6 @@ bool_t publishing(char *ip, int port, char *Article)
 
         for (i = 0; i < numSubs; i++)
 	{
-		printf("client soceket %d\n", current->clientSocket);
 		send = 0;
 		int j = 0;
 		int e = 0;
@@ -281,7 +286,6 @@ bool_t publishing(char *ip, int port, char *Article)
 				if (!strcmp(type, current->subscriptions[s]))
 				{
 					// printf("client %s subbed to %s\n", current->ip, current->subscriptions[s]);
-					printf("client sock %d\n", current->clientSocket);
 					send = 1;
 					break;
 				}
@@ -291,8 +295,7 @@ bool_t publishing(char *ip, int port, char *Article)
 
 		if (send == 1)
 		{
-			printf("Send %s to client %s sock %d\n", toSend, current->ip, current->clientSocket);
-			if (!SendTo(current->clientSocket, current->clientAddr, toSend))
+			if (!SendTo(serverSocket, current->clientAddr, toSend))
 			{
 				printf("couldn't send to client\n");
 				return 0;
@@ -314,7 +317,6 @@ bool_t subscribing(char *ip, int port, char *Article)
 
 	for (i = 0; i < numSubs; i++) // go through all the clients to look for right one
 	{
-	printf("checking client sock %d\n", current->clientSocket);
 		if (!strcmp(current->ip, ip) && current->port == port)
 		{
 			while ((type = strsep(&Article, ";")) != NULL)
@@ -392,7 +394,7 @@ bool_t unsubscribing(char *ip, int port, char *Article)
 
 void print_sub(SubNode *n)
 {
-    printf("IP: %s, Port: %d Socket: %d\n", n->ip, n->port, n->clientSocket);
+    printf("IP: %s, Port: %d\n", n->ip, n->port);
 }
 
 void list_subscribers()
