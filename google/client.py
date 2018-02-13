@@ -1,39 +1,83 @@
-#!/usr/bin/env python
+# Imports the Google Cloud client library
+from google.cloud import pubsub_v1
 
-# Copyright 2016 Google Inc. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+project_id = 'pubsub-195103'
 
+menu = "\n\n1 - create a topic\n2 - subscribe to a topic\n3 - unsubscribe from a topic\n4 - publish a message\n5 - quit\n> "
 
-def run_quickstart():
-    # [START pubsub_quickstart]
-    # Imports the Google Cloud client library
-    from google.cloud import pubsub_v1
+publisher = None
+subscriber = None
 
-    # Instantiates a client
+def join(pid):
+    global publisher
+    global subscriber
     publisher = pubsub_v1.PublisherClient()
+    subscriber = pubsub_v1.SubscriberClient()
 
-    # The resource path for the new topic contains the project ID
-    # and the topic name.
-    topic_path = publisher.topic_path(
-        'my-project', 'my-new-topic')
+    print("\nJoined Server {}\n".format(pid))
 
-    # Create the topic.
+
+def create_topic(pid, topic_name):
+    topic_path = publisher.topic_path(pid, topic_name)
     topic = publisher.create_topic(topic_path)
 
     print('Topic created: {}'.format(topic))
-    # [END pubsub_quickstart]
 
+
+def subscribe(pid, subscription_name):
+    subscription_path = subscriber.topic_path(pid, subscription_name)
+
+    def callback(message):
+        print('Received message: {}'.format(message))
+        message.ack()
+
+    subscriber.subscribe(subscription_path, callback=callback)
+    print('Listening for messages on {}'.format(subscription_path))
+
+
+def unsubscribe(pid, subscription_name):
+    subscription_path = subscriber.subscription_path(pid, subscription_name)
+    subscriber.delete_subscription(subscription_path)
+
+    print('Subscription deleted: {}'.format(subscription_path))
+
+
+def publish(pid, topic_name, message):
+    topic_path = publisher.topic_path(pid, topic_name)
+
+    message = message.encode('utf-8')
+    publisher.publish(topic_path, data=message)
+
+    print('Published Message.')
+
+
+def main():
+
+    print("Welcome to Panther Pub Sub\n")
+    join(project_id)
+
+    while(True):
+        choice = int(input(menu))
+
+        if choice == 1: # Create a topic
+            topic = input("What's the topic?\n>")
+            create_topic(project_id, topic)
+        elif choice == 2: # Subscribe to a topic
+            topic = input("What's the topic?\n>")
+            subscribe(project_id, topic)
+        elif choice == 3: # Unsubscribe from a topic 
+            topic = input("What's the topic?\n>")
+            unsubscribe(project_id, topic)
+        elif choice == 4: # Publish a message to a topic
+            topic = input("What's the topic?\n>")
+            message = input("What's the message?\n>")
+            publish(project_id, topic, message)
+        elif choice == 5: # Quit
+            print("Quitting...\n")
+            break
+        else:
+            print("Quitting...\n")
+            break
 
 if __name__ == '__main__':
-    run_quickstart()
+    main()
