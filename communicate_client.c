@@ -10,8 +10,9 @@
 #include <pthread.h>
 #include <unistd.h>
 #include <arpa/inet.h>
-#include <sys/socket.h>
 #include "communicate.h"
+#define MAXSTRING 120
+#include "udp.h"
 
 CLIENT *setup_rpc(char *host);
 
@@ -42,15 +43,15 @@ main (int argc, char *argv[])
 
     clnt = setup_rpc(host);
 
-    //pthread_create(&udp_thread, NULL, udp_thread_func, NULL);
-    pthread_create(&rpc_thread, NULL, rpc_thread_func, NULL);
-    pthread_create(&ping_thread, NULL, ping_thread_func, (void *)clnt);
+    pthread_create(&udp_thread, NULL, udp_thread_func, NULL);
+    // pthread_create(&rpc_thread, NULL, rpc_thread_func, NULL);
+    // pthread_create(&ping_thread, NULL, ping_thread_func, (void *)clnt);
 
     while(live){}
 
-    //pthread_join(udp_thread, NULL);
-    pthread_join(rpc_thread, NULL);
-    pthread_join(ping_thread, NULL);
+    pthread_join(udp_thread, NULL);
+    //pthread_join(rpc_thread, NULL);
+    //pthread_join(ping_thread, NULL);
 
     /** TEMPORARY TESTING CALLS **/
     printf("All threads joined\n Program terminating\n");;
@@ -242,6 +243,50 @@ void *ping_thread_func(void *ping_args)
         sleep(60);
     }
 }
+
+void *udp_thread_func(void *udp_args)
+{
+    int c1Socket;
+    struct sockaddr_in c1Addr;
+
+    int c2Socket;
+    struct sockaddr_in c2Addr;
+    CLIENT *clnt;
+    char *host = "127.0.0.1";
+    clnt = setup_rpc(host);
+
+    InitClient("127.0.0.1", 8888, &c1Socket, &c1Addr);
+    printf("Client Initialized\n %s %d\n", inet_ntoa(c1Addr.sin_addr), ntohs(c1Addr.sin_port));
+
+
+    InitClient("127.0.0.1", 1234, &c2Socket, &c2Addr);
+    printf("Client 2 Initialized\n %s %d\n", inet_ntoa(c2Addr.sin_addr), ntohs(c2Addr.sin_port));
+    int r = join(clnt, "127.0.0.1", 8888);
+
+    printf("Join Result: %d\n", r);
+
+    r = join(clnt, "127.0.0.1", 1234);
+
+    printf("Join Result: %d\n", r);
+
+    int s = subscribe(clnt, "127.0.0.1", 8888, "Science;UMN;;");
+    int p = publish (clnt, "127.0.0.1", 1234, "Science;NatGeo;Tyson;moon");
+    while(1){
+
+        char buffer[MAXSTRING];
+//        SendTo(serverSocket, &serverAddr, "XXX");
+
+        printf("udp socket of first client %d\n", c1Socket);
+        int len = RecvFrom(c1Socket, &c1Addr, buffer);
+        printf("waiting\n");
+        if (len) {
+            printf("%s\n", buffer);
+        } else {
+            printf("UDP Live\n");
+        }
+    }
+}
+
 
 /**
  * TODO Not functioning yet

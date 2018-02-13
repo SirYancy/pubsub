@@ -2,6 +2,7 @@
 #include <netinet/in.h>
 #include <stdbool.h>
 #include <string.h>
+#include <stdio.h>
 
 #define MAX_BUFFER 1024
 
