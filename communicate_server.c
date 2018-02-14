@@ -38,37 +38,19 @@ bool_t subscribing(char *ip, int port, char *Article);
 bool_t unsubscribing(char *ip, int port, char *Article);
 bool_t publishing(char *ip, int port, char *Article);
 
-    bool_t *
-joinserver_1_svc(char *IP, int ProgID, int ProgVers,  struct svc_req *rqstp)
-{
-    static bool_t  result;
-
-    // TODO: Later
-
-    return &result;
-}
-
-    bool_t *
-leaveserver_1_svc(char *IP, int ProgID, int ProgVers,  struct svc_req *rqstp)
-{
-    static bool_t  result;
-
-    // TODO later
-
-    return &result;
-}
 
     bool_t *
 join_1_svc(char *IP, int Port, struct svc_req *rqstp)
 {
     static bool_t  result;
 
+    printf("adding subscriber\n");
+
     result = add_subscriber(IP, Port);
 
     printf("Added client. Result: %d, IP: %s, Port: %d\n", result, IP, Port);
 
     list_subscribers();
-
 
     return &result;
 }
@@ -407,4 +389,24 @@ void list_subscribers()
         print_sub(n);
         n = n->next;
     }
+}
+
+    bool_t *
+joinserver_1_svc(char *IP, int ProgID, int ProgVers,  struct svc_req *rqstp)
+{
+    static bool_t  result;
+
+    // TODO: Later
+
+    return &result;
+}
+
+    bool_t *
+leaveserver_1_svc(char *IP, int ProgID, int ProgVers,  struct svc_req *rqstp)
+{
+    static bool_t  result;
+
+    // TODO later
+
+    return &result;
 }

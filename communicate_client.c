@@ -141,6 +141,11 @@ CLIENT *setup_rpc(char *host)
     }
 #endif	/* DEBUG */
 
+    if(join(clnt, my_ip, my_port))
+        printf("Successfully joined server.\n");
+    else
+        printf("Server join failed.\n");
+
     return clnt;
 }
 
@@ -180,6 +185,7 @@ bool_t join(CLIENT *clnt, char *ip, int port)
 {
     bool_t  *result;
 
+    printf("Joining: %s:%d", ip, port);
     result = join_1(ip, port, clnt);
 
     if (result == (bool_t *) NULL) {
@@ -246,10 +252,6 @@ bool_t publish(CLIENT *clnt, char *ip, int port, char *Article)
 void *rpc_thread_func(void *rpc_args)
 {
     int menu_choice;
-    if(join(clnt, my_ip, my_port))
-        printf("Successfully joined server.\n");
-    else
-        printf("Server join failed.\n");
     while(live)
     {
         char article[120];
