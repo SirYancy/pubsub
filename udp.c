@@ -40,11 +40,6 @@ bool InitClient(char *IP, int port, int *sockDesc, struct sockaddr_in *sockAddr)
     sockAddr->sin_port = htons(port);
     sockAddr->sin_addr.s_addr = inet_addr(IP);
 
-    if (bind(*sockDesc, (struct sockaddr *)sockAddr, sizeof(struct sockaddr_in)) < 0){
-        printf("Error binding\n");
-        return false;
-    }
-
     return true;
 }
 
@@ -53,7 +48,7 @@ void Destroy(int sockDesc) {
 }
 
 bool SendTo(int sockDesc, struct sockaddr_in *sockAddr, char *buffer) {
-    printf("sending\n");
+    printf("Sending to: %s:%d\n", inet_ntoa(sockAddr->sin_addr), ntohs(sockAddr->sin_port));
     if (sendto(sockDesc, buffer, strlen(buffer), 0, (struct sockaddr *) sockAddr, sizeof(struct sockaddr_in)) < 0) {
         printf("Error sending\n");
         return false;

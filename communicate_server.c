@@ -16,6 +16,10 @@
 #define MAXSTRING 120
 #define SERVERPORT 8888 
 
+int serverSocket = -1;
+struct sockaddr_in serverAddr;
+bool_t initialized = -1;
+
 typedef struct SubNode
 {
     char *ip;
@@ -43,8 +47,6 @@ bool_t publishing(char *ip, int port, char *Article);
 join_1_svc(char *IP, int Port, struct svc_req *rqstp)
 {
     static bool_t  result;
-
-    printf("adding subscriber\n");
 
     result = add_subscriber(IP, Port);
 
@@ -231,13 +233,23 @@ bool_t publishing(char *ip, int port, char *Article)
     char *type;
     SubNode *current = subList;
     bool_t send;
-    char *toSend = Article;
+    char toSend[strlen(Article)];
+    strcpy(toSend, Article);
 
-    int serverSocket;
-    struct sockaddr_in serverAddr;
-    if (!InitServer(SERVERPORT, &serverSocket, &serverAddr))
+    printf("Article: %s\n", toSend);
+
+    if(initialized < 0)
     {
-        printf("couldn't initialise server");
+        printf("Server init\n");
+        if (!InitServer(SERVERPORT, &serverSocket, &serverAddr))
+        {
+            printf("couldn't initialise server\n");
+        }
+        else
+        {
+            printf("Initialized server\n");
+            initialized = 1;
+        }
     }
 
     for (i = 0; i < numSubs; i++)

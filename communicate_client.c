@@ -20,7 +20,7 @@
 int server_port = 8888;
 
 char *my_ip = "127.0.0.1";
-int my_port = 0;
+int my_port = -1;
 
 struct sockaddr_in my_addr, server_addr;
 int my_sock;
@@ -162,7 +162,7 @@ int setup_udp() {
         exit(1);
     }
 
-    InitClient(my_ip, 0, &s, &my_addr);
+    InitServer(0, &s, &my_addr);
 
     if (connect(s, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0){
         printf("Error connecting\n");
