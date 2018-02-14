@@ -11,7 +11,7 @@ bool InitServer(int port, int *sockDesc, struct sockaddr_in *sockAddr) {
     }
 
     // Initialize
-    memset((char *)sockAddr, '\0', sizeof(struct sockaddr_in));
+    memset((struct sockaddr *)sockAddr, 0, sizeof(*sockAddr));
 
     sockAddr->sin_family = AF_INET;
     sockAddr->sin_port = htons(port);
@@ -33,12 +33,17 @@ bool InitClient(char *IP, int port, int *sockDesc, struct sockaddr_in *sockAddr)
     }
 
     // Initialize
-    memset((char *)sockAddr, '\0', sizeof(struct sockaddr_in));
+    memset((struct sockaddr *)sockAddr, 0, sizeof(*sockAddr));
 
     /*Configure settings in address struct*/
     sockAddr->sin_family = AF_INET;
     sockAddr->sin_port = htons(port);
     sockAddr->sin_addr.s_addr = inet_addr(IP);
+
+    if (bind(*sockDesc, (struct sockaddr *)sockAddr, sizeof(struct sockaddr_in)) < 0){
+        printf("Error binding\n");
+        return false;
+    }
 
     return true;
 }

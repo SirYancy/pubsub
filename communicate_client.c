@@ -22,7 +22,11 @@ int server_port = 8888;
 char *my_ip = "127.0.0.1";
 int my_port = 0;
 
+struct sockaddr_in my_addr, server_addr;
+int my_sock;
+
 CLIENT *setup_rpc(char *host);
+int setup_udp();
 
 void *ping_thread_func(void *ping_args);
 void *rpc_thread_func(void *rpc_args);
@@ -50,6 +54,7 @@ main (int argc, char *argv[])
     }
     host = argv[1];
 
+    my_sock = setup_udp();
     clnt = setup_rpc(host);
 
     pthread_create(&udp_thread, NULL, udp_thread_func, NULL);
@@ -137,6 +142,38 @@ CLIENT *setup_rpc(char *host)
 #endif	/* DEBUG */
 
     return clnt;
+}
+
+int setup_udp() {
+    int s;
+
+    memset((char *)&server_addr, '\0', sizeof(server_addr));
+
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(server_port);
+
+    if(inet_aton(SERVER, &server_addr.sin_addr) == 0){
+        fprintf(stderr, "inet_aton() failed in udp_thread\n");
+        exit(1);
+    }
+
+    InitClient(my_ip, 0, &s, &my_addr);
+
+    if (connect(s, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0){
+        printf("Error connecting\n");
+        return false;
+    }
+
+    int slen = sizeof(my_addr);
+
+    if (getsockname(s, (struct sockaddr *)&my_addr, &slen) < 0){
+        printf("Error connecting\n");
+        return false;
+    }
+
+    my_port = ntohs(my_addr.sin_port);
+    printf("Client Initialized\n %s %d\n", inet_ntoa(my_addr.sin_addr), ntohs(my_addr.sin_port));
+    return s;
 }
 
 bool_t join(CLIENT *clnt, char *ip, int port)
@@ -280,28 +317,12 @@ void *ping_thread_func(void *ping_args)
 
 void *udp_thread_func(void *udp_args)
 {
-    int socket;
-    struct sockaddr_in me_addr, server_addr;
-
-    memset((char *)&server_addr, '\0', sizeof(server_addr));
-
-    server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(server_port);
-
-    if(inet_aton(SERVER, &server_addr.sin_addr) == 0){
-        fprintf(stderr, "inet_aton() failed in udp_thread\n");
-        exit(1);
-    }
-
-    InitClient(my_ip, 0, &socket, &me_addr);
-    my_port = ntohs(me_addr.sin_port);
-    printf("Client Initialized\n %s %d\n", inet_ntoa(me_addr.sin_addr), ntohs(me_addr.sin_port));
 
     while(1){
 
         char buffer[MAXSTRING];
 
-        int len = RecvFrom(socket, &server_addr, buffer);
+        int len = RecvFrom(my_sock, &server_addr, buffer);
         printf("waiting\n");
         if (len) {
             printf("%s\n", buffer);
