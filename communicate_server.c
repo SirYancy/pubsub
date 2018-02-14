@@ -256,7 +256,7 @@ bool_t publishing(char *ip, int port, char *Article)
             {
                 printf("Illegal to publish this article\n");
                 send = 0;
-                break;
+                return 0;
             }
             else if(!strcmp(type, ""))
             {

@@ -2,11 +2,12 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include "udp.h"
+#include <errno.h>
 
 bool InitServer(int port, int *sockDesc, struct sockaddr_in *sockAddr) {
     // creating socket
     if ((*sockDesc = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
-        printf("Error creating socket\n");
+	fprintf(stderr, "Error creating server socket: %s\n", strerror(errno));
         return false;
     }
 
@@ -18,7 +19,7 @@ bool InitServer(int port, int *sockDesc, struct sockaddr_in *sockAddr) {
     sockAddr->sin_addr.s_addr = htonl(INADDR_ANY);
 
     if (bind(*sockDesc, (struct sockaddr *)sockAddr, sizeof(struct sockaddr_in)) < 0){
-        printf("Error binding\n");
+        fprintf(stderr, "Error binding: %s\n", strerror(errno));
         return false;
     }
 
@@ -28,8 +29,8 @@ bool InitServer(int port, int *sockDesc, struct sockaddr_in *sockAddr) {
 bool InitClient(char *IP, int port, int *sockDesc, struct sockaddr_in *sockAddr) {
     // Creating socket
     if ((*sockDesc = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
-        printf("Error creating socket\n");
-        return false;
+        fprintf(stderr, "Error creating client socket: %s\n", strerror(errno));
+	return false;
     }
 
     // Initialize
@@ -41,8 +42,8 @@ bool InitClient(char *IP, int port, int *sockDesc, struct sockaddr_in *sockAddr)
     sockAddr->sin_addr.s_addr = inet_addr(IP);
 
     if (bind(*sockDesc, (struct sockaddr *)sockAddr, sizeof(struct sockaddr_in)) < 0){
-        printf("Error binding\n");
-        return false;
+        fprintf(stderr, "Error binding client: %s\n", strerror(errno));
+	return false;
     }
 
     return true;
@@ -55,8 +56,8 @@ void Destroy(int sockDesc) {
 bool SendTo(int sockDesc, struct sockaddr_in *sockAddr, char *buffer) {
     printf("sending\n");
     if (sendto(sockDesc, buffer, strlen(buffer), 0, (struct sockaddr *) sockAddr, sizeof(struct sockaddr_in)) < 0) {
-        printf("Error sending\n");
-        return false;
+        fprintf(stderr, "Error sending: %s\n", strerror(errno));
+	return false;
     }
 
     return true;
@@ -68,8 +69,8 @@ int RecvFrom(int sockDesc, struct sockaddr_in *sockAddr, char *buffer) {
     int len = recvfrom(sockDesc, buffer, MAX_BUFFER - 1, 0, (struct sockaddr *) sockAddr, &sockLen);
 
     if (len < 0) {
-        printf("Error receiving\n");
-        return -1;
+        fprintf(stderr, "Error receiving: %s\n", strerror(errno));
+	return -1;
     }
 
     return len;
