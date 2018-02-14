@@ -10,9 +10,17 @@
 #include <pthread.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <sys/socket.h>
 #include "communicate.h"
-#define MAXSTRING 120
 #include "udp.h"
+
+#define MAXSTRING 120
+
+#define SERVER "127.0.0.1"
+int server_port = 8888;
+
+char *my_ip = "127.0.0.1";
+int my_port = 0;
 
 CLIENT *setup_rpc(char *host);
 
@@ -28,10 +36,11 @@ bool_t subscribe(CLIENT *clnt, char *ip, int port, char *Article);
 bool_t unsubscribe(CLIENT *clnt, char *ip, int port, char *Article);
 bool_t publish(CLIENT *clnt, char *ip, int port, char *Article);
 
+CLIENT *clnt;
+
 int
 main (int argc, char *argv[])
 {
-    CLIENT *clnt;
     char *host;
     pthread_t rpc_thread, udp_thread, ping_thread;
 
@@ -44,16 +53,16 @@ main (int argc, char *argv[])
     clnt = setup_rpc(host);
 
     pthread_create(&udp_thread, NULL, udp_thread_func, NULL);
-    // pthread_create(&rpc_thread, NULL, rpc_thread_func, NULL);
-    // pthread_create(&ping_thread, NULL, ping_thread_func, (void *)clnt);
+    pthread_create(&rpc_thread, NULL, rpc_thread_func, NULL);
+    pthread_create(&ping_thread, NULL, ping_thread_func, (void *)clnt);
 
     while(live){}
 
     pthread_join(udp_thread, NULL);
-    //pthread_join(rpc_thread, NULL);
-    //pthread_join(ping_thread, NULL);
+    pthread_join(rpc_thread, NULL);
+    pthread_join(ping_thread, NULL);
 
-    /** TEMPORARY TESTING CALLS **/
+    /** TEMPORARY TESTING CALLS 
     printf("All threads joined\n Program terminating\n");;
 
     int r = join(clnt, "192.168.1.1", 8888);
@@ -92,6 +101,9 @@ main (int argc, char *argv[])
 
     printf("Unsubscribe Result: %d\n", u);
 
+    int s = subscribe(clnt, "127.0.0.1", 8888, "Science;UMN;;");
+    int p = publish (clnt, "127.0.0.1", 1234, "Science;NatGeo;Tyson;moon");
+
     r = leave(clnt, "255.255.255.255", 8888);
 
     printf("Leave Result: %d\n", r);
@@ -103,6 +115,7 @@ main (int argc, char *argv[])
     r = leave(clnt, "192.168.1.2", 8888);
 
     printf("Leave Result: %d\n", r);
+    */
 
 #ifndef	DEBUG
     clnt_destroy (clnt);
@@ -196,8 +209,13 @@ bool_t publish(CLIENT *clnt, char *ip, int port, char *Article)
 void *rpc_thread_func(void *rpc_args)
 {
     int menu_choice;
+    if(join(clnt, my_ip, my_port))
+        printf("Successfully joined server.\n");
+    else
+        printf("Server join failed.\n");
     while(live)
     {
+        char article[120];
         printf("Welcome!\n%s\n%s\n%s\n%s\n%s\n%s",
                 "What do you want to do?",
                 "1 - subscribe",
@@ -207,14 +225,30 @@ void *rpc_thread_func(void *rpc_args)
                 "> ");
         scanf("%d", &menu_choice);
         switch(menu_choice) {
-            case 1:
-                printf("Subscribing now\n");
+            case 1:                     //Subscribe
+                printf("Subscribe to what?\n> ");
+                scanf("%s", article);
+                if(subscribe(clnt, my_ip, my_port, article))
+                    printf("Subscribe successful!\n");
+                else
+                    printf("Subscribe unsuccessful!\n");
                 break;
-            case 2:
-                printf("Unsubscribing now\n");
+
+            case 2:                     //Unsubscribe
+                printf("Unsubscribe from what?\n> ");
+                scanf("%s", article);
+                if(unsubscribe(clnt, my_ip, my_port, article))
+                    printf("Unsubscribe successful!\n");
+                else
+                    printf("Unsubscribe unsuccessful!\n");
                 break;
             case 3:
-                printf("Publishing now\n");
+                printf("What's the article?\n> ");
+                scanf("%s", article);
+                if(publish(clnt, my_ip, my_port, article))
+                    printf("Publish successful!\n");
+                else
+                    printf("Publish unsuccessful!\n");
                 break;
             case 4:
                 live = 0;
@@ -246,37 +280,28 @@ void *ping_thread_func(void *ping_args)
 
 void *udp_thread_func(void *udp_args)
 {
-    int c1Socket;
-    struct sockaddr_in c1Addr;
+    int socket;
+    struct sockaddr_in me_addr, server_addr;
 
-    int c2Socket;
-    struct sockaddr_in c2Addr;
-    CLIENT *clnt;
-    char *host = "127.0.0.1";
-    clnt = setup_rpc(host);
+    memset((char *)&server_addr, '\0', sizeof(server_addr));
 
-    InitClient("127.0.0.1", 8888, &c1Socket, &c1Addr);
-    printf("Client Initialized\n %s %d\n", inet_ntoa(c1Addr.sin_addr), ntohs(c1Addr.sin_port));
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(server_port);
 
+    if(inet_aton(SERVER, &server_addr.sin_addr) == 0){
+        fprintf(stderr, "inet_aton() failed in udp_thread\n");
+        exit(1);
+    }
 
-    InitClient("127.0.0.1", 1234, &c2Socket, &c2Addr);
-    printf("Client 2 Initialized\n %s %d\n", inet_ntoa(c2Addr.sin_addr), ntohs(c2Addr.sin_port));
-    int r = join(clnt, "127.0.0.1", 8888);
+    InitClient(my_ip, 0, &socket, &me_addr);
+    my_port = ntohs(me_addr.sin_port);
+    printf("Client Initialized\n %s %d\n", inet_ntoa(me_addr.sin_addr), ntohs(me_addr.sin_port));
 
-    printf("Join Result: %d\n", r);
-
-    r = join(clnt, "127.0.0.1", 1234);
-
-    printf("Join Result: %d\n", r);
-
-    int s = subscribe(clnt, "127.0.0.1", 8888, "Science;UMN;;");
-    int p = publish (clnt, "127.0.0.1", 1234, "Science;NatGeo;Tyson;moon");
     while(1){
 
         char buffer[MAXSTRING];
-//        SendTo(serverSocket, &serverAddr, "XXX");
 
-        int len = RecvFrom(c1Socket, &c1Addr, buffer);
+        int len = RecvFrom(socket, &server_addr, buffer);
         printf("waiting\n");
         if (len) {
             printf("%s\n", buffer);
@@ -285,95 +310,3 @@ void *udp_thread_func(void *udp_args)
         }
     }
 }
-
-
-/**
- * TODO Not functioning yet
-void *udp_thread_func(void *udp_args)
-{
-    int serverSocket;
-    struct sockaddr_in serverAddr;
-
-    if (!InitClient("127.0.0.1", 5678, &serverSocket, &serverAddr)) {
-        // Client initialization fail
-    }
-
-    printf("Client Initialized\n %s %d\n", inet_ntoa(serverAddr.sin_addr), ntohs(serverAddr.sin_port));
-
-    while(live){
-        char buffer[MAX_BUFFER];
-        SendTo(serverSocket, &serverAddr, "XXX");
-
-        int len = RecvFrom(serverSocket, &serverAddr, buffer);
-
-        if (len) {
-            printf("%s\n", buffer);
-        } else {
-            printf("UDP Live\n");
-        }
-    }
-}
-*/
-
-/*
-   void
-   communicate_prog_1(char *host)
-   {
-   bool_t  *result_1;
-   char *joinserver_1_IP;
-   int joinserver_1_ProgID;
-   int joinserver_1_ProgVers;
-   bool_t  *result_2;
-   char *leaveserver_1_IP;
-   int leaveserver_1_ProgID;
-   int leaveserver_1_ProgVers;
-   bool_t  *result_5;
-   char *subscribe_1_IP;
-   int subscribe_1_Port;
-   char *subscribe_1_Article;
-   bool_t  *result_6;
-   char *unsubscribe_1_IP;
-   int unsubscribe_1_Port;
-   char *unsubscribe_1_Article;
-   bool_t  *result_7;
-   char *publish_1_Article;
-   char *publish_1_IP;
-   int publish_1_Port;
-   bool_t  *result_8;
-   char *publishserver_1_Article;
-   char *publishserver_1_IP;
-   int publishserver_1_Port;
-   bool_t  *result_9;
-
-   result_1 = joinserver_1(joinserver_1_IP, joinserver_1_ProgID, joinserver_1_ProgVers, clnt);
-   if (result_1 == (bool_t *) NULL) {
-   clnt_perror (clnt, "call failed");
-   }
-   result_2 = leaveserver_1(leaveserver_1_IP, leaveserver_1_ProgID, leaveserver_1_ProgVers, clnt);
-   if (result_2 == (bool_t *) NULL) {
-   clnt_perror (clnt, "call failed");
-   }
-   result_5 = subscribe_1(subscribe_1_IP, subscribe_1_Port, subscribe_1_Article, clnt);
-   if (result_5 == (bool_t *) NULL) {
-   clnt_perror (clnt, "call failed");
-   }
-   result_6 = unsubscribe_1(unsubscribe_1_IP, unsubscribe_1_Port, unsubscribe_1_Article, clnt);
-   if (result_6 == (bool_t *) NULL) {
-   clnt_perror (clnt, "call failed");
-   }
-   result_7 = publish_1(publish_1_Article, publish_1_IP, publish_1_Port, clnt);
-   if (result_7 == (bool_t *) NULL) {
-   clnt_perror (clnt, "call failed");
-   }
-   result_8 = publishserver_1(publishserver_1_Article, publishserver_1_IP, publishserver_1_Port, clnt);
-   if (result_8 == (bool_t *) NULL) {
-   clnt_perror (clnt, "call failed");
-   }
-   result_9 = ping_1(clnt);
-   if (result_9 == (bool_t *) NULL) {
-   clnt_perror (clnt, "call failed");
-   }
-   }
-   */
-
-
