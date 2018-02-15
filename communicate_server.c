@@ -310,7 +310,7 @@ bool_t subscribing(char *ip, int port, char *Article)
     int p = 0;
     SubNode *current = subList;
     char *type;
-    type = strtok(&Article, ";");
+    type = strtok(Article, ";");
 
     for (i = 0; i < numSubs; i++) // go through all the clients to look for right one
     {
@@ -361,11 +361,13 @@ bool_t unsubscribing(char *ip, int port, char *Article)
     {
         if (!strcmp(current->ip, ip) && current->port == port)
         {
+            printf("Found user\n");
             char *type;
             char subs[100][MAXSTRING];
-	    type = strtok(&Article, ";");
+            type = strtok(Article, ";");
             while (type != NULL)
             {
+                printf("Type: %s\n", type);
                 for (s = 0; s < 100; s++)
                 {
                     if (!strcmp(current->subscriptions[s], type) && strcmp(type, ""))
@@ -375,7 +377,7 @@ bool_t unsubscribing(char *ip, int port, char *Article)
                         current->subs = current->subs - 1;
                     }
                 }
-		type = strtok(NULL, ";");
+                type = strtok(NULL, ";");
             }
 
             if (u == 0)
