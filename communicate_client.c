@@ -306,12 +306,12 @@ void *ping_thread_func(void *ping_args)
 
     while(live){
         result = ping_1(clnt);
-        printf("Sending Ping\n");
+        //printf("Sending Ping\n");
         if (result == (bool_t *) NULL) {
             clnt_perror(clnt, "Ping failed");
             live = 0;
         }
-        printf("Ping Received\n");
+        //printf("Ping Received\n");
 
         sleep(60);
     }
@@ -325,7 +325,7 @@ void *udp_thread_func(void *udp_args)
         char buffer[MAXSTRING];
 
         int len = RecvFrom(my_sock, &server_addr, buffer);
-        printf("waiting\n");
+        //printf("waiting\n");
         if (len) {
             printf("%s\n", buffer);
         } else {
