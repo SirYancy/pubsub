@@ -11,6 +11,8 @@
 #include <memory.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include "udp.h"
+#include <pthread.h>
 
 #ifndef SIG_PF
 #define SIG_PF void(*)(int)
@@ -166,35 +168,148 @@ communicate_prog_1(struct svc_req *rqstp, register SVCXPRT *transp)
 	return;
 }
 
-int
+void *udp_thread_func(void *udp_args) {
+    int clientSocket;
+    struct sockaddr_in myAddr, clientAddr;
+    char buffer[MAX_BUFFER];
+
+    printf("In udp thread ...\n");
+
+    if (!InitServer(5678, &clientSocket, &myAddr)) {
+        // Initialize server failed
+        printf("Server init fail\n");
+    }
+    printf("Server initialized\n");
+
+    memset((char *)&clientAddr, '\0', sizeof(clientAddr));
+
+    RecvFrom(clientSocket, &clientAddr, buffer);
+
+    printf("%s\n", buffer);
+    printf("%d %d\n", ntohs(clientAddr.sin_port), inet_ntoa(clientAddr.sin_addr));
+
+    while (true) {
+        SendTo(clientSocket, &clientAddr, "XXX");
+        sleep(2);
+    }
+}
+
+void *ping_thread_func(void *arg) {
+    char buffer[MAX_BUFFER];
+    SocketInfo *info = arg;
+
+    while (true) {
+        // This is for replying heartbeat, just send the same thing back to the server
+        RecvFrom(info->clientSocket, &(info->clientAddr), buffer);
+        SendTo(info->clientSocket, &(info->clientAddr), buffer);
+#if 0
+        if (strncmp("heartbeat", buffer, strlen(buffer)) == 0) {
+            // This is heartbeat, send the same thing back to server
+            SendTo(info->clientSocket, &(info->clientAddr), "heartbeat");
+        }
+#endif
+        pthread_yield();
+    }
+}
+
+void *ui_thread_func(void *arg) {
+    int sel;
+    bool quit = false;
+    SocketInfo *info = arg;
+    char buffer[MAX_BUFFER];
+
+    while (!quit) {
+        printf("Please select one of the followings:\n(1) Get List\n(2) Deregister and Quit\n");
+        scanf("%d", &sel);
+        switch (sel) {
+            case 1:
+                // Create get list message
+                sprintf(buffer, "GetList;RPC;%s;%d", MY_IP, info->myPort);
+                printf("%s\n", buffer);
+
+                // GetList
+                SendTo(info->serverSocket, &(info->serverAddr), buffer);
+                RecvFrom(info->serverSocket, &(info->serverAddr), buffer);
+
+                printf("%s\n", buffer);
+                break;
+            case 2:
+                // Create de-register message
+                sprintf(buffer, "Deregister;RPC;%s;%d", MY_IP, info->myPort);
+                printf("%s\n", buffer);
+
+                // Deregister
+                SendTo(info->serverSocket, &(info->serverAddr), buffer);
+
+                quit = true;
+
+                printf("Press ctrl + c to quit the server program\n");
+                break;
+            default:
+                printf("Invalid selectiong\n");
+                break;
+        }
+    }
+}
+
+    int
 main (int argc, char **argv)
 {
-	register SVCXPRT *transp;
+    register SVCXPRT *transp;
+    char buffer[MAX_BUFFER];
+    pthread_t pingThread;
+    pthread_t uiThread;
+    SocketInfo info;
 
-	pmap_unset (COMMUNICATE_PROG, COMMUNICATE_VERSION);
+    // Check parameters
+    if (argc < 4) {
+        printf("Usage: ./communicate_server LISTENING_PORT registry_server_IP registry_server_PORT\n");
+        return 0;
+    }
 
-	transp = svcudp_create(RPC_ANYSOCK);
-	if (transp == NULL) {
-		fprintf (stderr, "%s", "cannot create udp service.");
-		exit(1);
-	}
-	if (!svc_register(transp, COMMUNICATE_PROG, COMMUNICATE_VERSION, communicate_prog_1, IPPROTO_UDP)) {
-		fprintf (stderr, "%s", "unable to register (COMMUNICATE_PROG, COMMUNICATE_VERSION, udp).");
-		exit(1);
-	}
+    pmap_unset (COMMUNICATE_PROG, COMMUNICATE_VERSION);
 
-	transp = svctcp_create(RPC_ANYSOCK, 0, 0);
-	if (transp == NULL) {
-		fprintf (stderr, "%s", "cannot create tcp service.");
-		exit(1);
-	}
-	if (!svc_register(transp, COMMUNICATE_PROG, COMMUNICATE_VERSION, communicate_prog_1, IPPROTO_TCP)) {
-		fprintf (stderr, "%s", "unable to register (COMMUNICATE_PROG, COMMUNICATE_VERSION, tcp).");
-		exit(1);
-	}
+    transp = svcudp_create(RPC_ANYSOCK);
+    if (transp == NULL) {
+        fprintf (stderr, "%s", "cannot create udp service.");
+        exit(1);
+    }
+    if (!svc_register(transp, COMMUNICATE_PROG, COMMUNICATE_VERSION, communicate_prog_1, IPPROTO_UDP)) {
+        fprintf (stderr, "%s", "unable to register (COMMUNICATE_PROG, COMMUNICATE_VERSION, udp).");
+        exit(1);
+    }
 
-	svc_run ();
-	fprintf (stderr, "%s", "svc_run returned");
-	exit (1);
-	/* NOTREACHED */
+    transp = svctcp_create(RPC_ANYSOCK, 0, 0);
+    if (transp == NULL) {
+        fprintf (stderr, "%s", "cannot create tcp service.");
+        exit(1);
+    }
+    if (!svc_register(transp, COMMUNICATE_PROG, COMMUNICATE_VERSION, communicate_prog_1, IPPROTO_TCP)) {
+        fprintf (stderr, "%s", "unable to register (COMMUNICATE_PROG, COMMUNICATE_VERSION, tcp).");
+        exit(1);
+    }
+
+    printf("Listening on port: %d\n", atoi(argv[1]));
+    printf("Conneting to registry server at: %s:%d\n", argv[2], atoi(argv[3]));
+
+    InitServer(atoi(argv[1]), &info.clientSocket, &info.clientAddr);
+    InitClient(argv[2], atoi(argv[3]), &info.serverSocket, &info.serverAddr);
+
+    info.myPort = atoi(argv[1]);
+    info.serverPort = atoi(argv[3]);
+    info.serverIP = argv[2];
+
+    pthread_create(&pingThread, NULL, ping_thread_func, &info);
+    pthread_create(&uiThread, NULL, ui_thread_func, &info);
+
+    // Create register message
+    sprintf(buffer, "Register;RPC;%s;%d;%x;%d", MY_IP, atoi(argv[1]), COMMUNICATE_PROG, COMMUNICATE_VERSION);
+
+    // Register
+    SendTo(info.serverSocket, &(info.serverAddr), buffer);
+
+    svc_run ();
+    fprintf (stderr, "%s", "svc_run returned");
+    exit (1);
+    /* NOTREACHED */
 }
