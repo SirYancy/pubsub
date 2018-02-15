@@ -49,7 +49,7 @@ void Destroy(int sockDesc) {
 }
 
 bool SendTo(int sockDesc, struct sockaddr_in *sockAddr, char *buffer) {
-    printf("Sending to: %s:%d\n", inet_ntoa(sockAddr->sin_addr), ntohs(sockAddr->sin_port));
+    //printf("Sending to: %s:%d\n", inet_ntoa(sockAddr->sin_addr), ntohs(sockAddr->sin_port));
     if (sendto(sockDesc, buffer, strlen(buffer), 0, (struct sockaddr *) sockAddr, sizeof(struct sockaddr_in)) < 0) {
         fprintf(stderr, "Error sending: %s\n", strerror(errno));
 	return false;
