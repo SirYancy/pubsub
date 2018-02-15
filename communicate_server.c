@@ -257,7 +257,8 @@ bool_t publishing(char *ip, int port, char *Article)
         send = 0;
         int j = 0;
         int e = 0;
-        while ((type = strsep(&Article, ";")) != NULL)
+	type = strtok(Article, ";");
+        while (type != NULL)
         {
             if ((send == 1 && j < 3)) // if at least one of 1st 3 fields is sendable, continue to check contents field
             {
@@ -277,9 +278,9 @@ bool_t publishing(char *ip, int port, char *Article)
                 continue;
             }
 
-            for (s = 0; s < current->subs; s++) // go through subscriptions, and check if it matches a field in article
+            for (s = 0; s < 100; s++) // go through subscriptions, and check if it matches a field in article
             {
-                if (!strcmp(type, current->subscriptions[s]))
+                if (!strcmp(type, current->subscriptions[s]) && strcmp(type, ""))
                 {
                     // printf("client %s subbed to %s\n", current->ip, current->subscriptions[s]);
                     send = 1;
@@ -287,6 +288,7 @@ bool_t publishing(char *ip, int port, char *Article)
                 }
             }
             j++;
+	    type = strtok(NULL, ";");
         }
 
         if (send == 1)
@@ -327,7 +329,7 @@ bool_t subscribing(char *ip, int port, char *Article)
                         return 0;
                     }
                     strcpy(current->subscriptions[j], type);
-                    current->subs = current->subs + 1;
+	            current->subs = current->subs + 1;
                     j++;
                 }
 		p++;
