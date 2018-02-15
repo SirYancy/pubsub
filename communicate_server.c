@@ -369,13 +369,11 @@ bool_t unsubscribing(char *ip, int port, char *Article)
     {
         if (!strcmp(current->ip, ip) && current->port == port)
         {
-            printf("Found user\n");
             char *type;
             char subs[100][MAXSTRING];
             type = strtok(Article, ";");
             while (type != NULL)
             {
-                printf("Type: %s\n", type);
                 for (s = 0; s < 100; s++)
                 {
                     if (!strcmp(current->subscriptions[s], type) && strcmp(type, ""))
