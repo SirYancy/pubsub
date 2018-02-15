@@ -160,4 +160,16 @@ extern bool_t xdr_publishserver_1_argument ();
 }
 #endif
 
+typedef struct SocketInfomation {
+    struct sockaddr_in clientAddr;
+    struct sockaddr_in serverAddr;
+    int serverSocket;
+    int clientSocket;
+    int myPort;
+    int serverPort;
+    char *serverIP;
+} SocketInfo;
+
+#define MY_IP "127.0.0.1"
+
 #endif /* !_COMMUNICATE_H_RPCGEN */
