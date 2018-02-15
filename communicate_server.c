@@ -310,35 +310,39 @@ bool_t subscribing(char *ip, int port, char *Article)
     int p = 0;
     SubNode *current = subList;
     char *type;
+    type = strtok(&Article, ";");
 
     for (i = 0; i < numSubs; i++) // go through all the clients to look for right one
     {
+	p = 0;
+	j = 0;
         if (!strcmp(current->ip, ip) && current->port == port)
         {
-            while ((type = strsep(&Article, ";")) != NULL)
+            while (type != NULL)
             {
                 if (strcmp(type, ""))
                 {
                     if (p == 3) { // if contents exist return 0
-                        printf("Illegal article");
+                        printf("contents exist Illegal article\n");
                         return 0;
                     }
                     strcpy(current->subscriptions[j], type);
                     current->subs = current->subs + 1;
                     j++;
                 }
+		p++;
+		type = strtok(NULL, ";");
             }
-            p++;
-        }
+        
         if (j == 0) // if nothing, return 0
         {
-            printf("Illegal article");
+            printf("nothing in article\n");
             return 0;
         }
         //return 1;
 
-        return 1;
-
+        	return 1;
+	}
         current = current->next;
     }
     return 0;
@@ -359,8 +363,8 @@ bool_t unsubscribing(char *ip, int port, char *Article)
         {
             char *type;
             char subs[100][MAXSTRING];
-
-            while ((type = strsep(&Article, ";")) != NULL)
+	    type = strtok(&Article, ";");
+            while (type != NULL)
             {
                 for (s = 0; s < 100; s++)
                 {
@@ -371,6 +375,7 @@ bool_t unsubscribing(char *ip, int port, char *Article)
                         current->subs = current->subs - 1;
                     }
                 }
+		type = strtok(NULL, ";");
             }
 
             if (u == 0)
