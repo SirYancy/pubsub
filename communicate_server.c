@@ -229,13 +229,15 @@ bool_t remove_subscriber(char *ip, int port)
 
 bool_t publishing(char *ip, int port, char *Article)
 {
-    int i, s = 0;
+    int i, s, e = 0;
     char *type;
     SubNode *current = subList;
     bool_t send;
     char toSend[strlen(Article)];
     strcpy(toSend, Article);
-
+    char *token;
+    char toCheck[strlen(Article)];
+    strcpy(toCheck, Article);
     printf("Article: %s\n", toSend);
 
     if(initialized < 0)
@@ -251,38 +253,37 @@ bool_t publishing(char *ip, int port, char *Article)
             initialized = 1;
         }
     }
+    int p = 0;
+    while ((token = strsep(&Article, ";")) != NULL)
+    {
+	if (!strcmp(token, ""))
+	{
+	    if (p == 3) {
+	       printf("no contents\n");
+	       return 0;
+	    }
+	    e++;
+	}
+	else if (p == 3 && e == 3)
+	{
+	    printf("no first 3 fields\n");
+	    return 0;
+	}
+	p++;
+    }
 
     for (i = 0; i < numSubs; i++)
     {
         send = 0;
         int j = 0;
         int e = 0;
-	type = strtok(Article, ";");
-        while (type != NULL)
+	type = strtok(toCheck, ";");
+	while (type != NULL)
         {
-            if ((send == 1 && j < 3)) // if at least one of 1st 3 fields is sendable, continue to check contents field
-            {
-                j++;
-                continue;
-            }
-            else if ((j == 3 && !strcmp(type, "")) || e == 3) //if contents field is empty or all first 3 empty
-            {
-                printf("Illegal to publish this article\n");
-                send = 0;
-                return 0;
-            }
-            else if(!strcmp(type, ""))
-            {
-                e++;
-                j++;
-                continue;
-            }
-
             for (s = 0; s < 100; s++) // go through subscriptions, and check if it matches a field in article
             {
                 if (!strcmp(type, current->subscriptions[s]) && strcmp(type, ""))
                 {
-                    // printf("client %s subbed to %s\n", current->ip, current->subscriptions[s]);
                     send = 1;
                     break;
                 }
@@ -290,7 +291,12 @@ bool_t publishing(char *ip, int port, char *Article)
             j++;
 	    type = strtok(NULL, ";");
         }
-
+        
+	if (j == 0) 
+	{
+	    printf("Illegal article\n");
+	    return 0;
+	}
         if (send == 1)
         {
             if (!SendTo(serverSocket, current->clientAddr, toSend))
@@ -363,13 +369,11 @@ bool_t unsubscribing(char *ip, int port, char *Article)
     {
         if (!strcmp(current->ip, ip) && current->port == port)
         {
-            printf("Found user\n");
             char *type;
             char subs[100][MAXSTRING];
             type = strtok(Article, ";");
             while (type != NULL)
             {
-                printf("Type: %s\n", type);
                 for (s = 0; s < 100; s++)
                 {
                     if (!strcmp(current->subscriptions[s], type) && strcmp(type, ""))
