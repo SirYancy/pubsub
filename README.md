@@ -10,9 +10,11 @@ First compile with make
 
 To run the server:
 
-`$ sudo ./communicate_server`
+`$ sudo ./communicate_server server_port registry_server_ip registry_server_port`
 
-This starts the server. For each client, a separate terminal window in the same directory is used. To start it,
+This starts the server and connec to the registry server with registry_server_ip and registry_server_port. There is a simple user interface for our group server where user can select 1 to get the registered server list from the registry server and 2 to deregister from the registry server and quit.
+
+For each client, a separate terminal window in the same directory is used. To start it,
 
 `$ ./communicate_client localhost  //or ip of server`
 
